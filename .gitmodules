@@ -1,0 +1,3 @@
+[submodule "utility"]
+	path = utility
+	url = http://github.com/JJJJJJJack/utility.git
