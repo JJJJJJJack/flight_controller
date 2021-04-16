@@ -1,0 +1,22 @@
+controller: {
+    KP_x: 0.5,
+    KI_x: 0.5,
+    KD_x: 0.5,
+    
+    KP_y: 0.5,
+    KI_y: 0.5,
+    KD_y: 0.5,
+    
+    KP_z: 0.5,
+    KI_z: 0.5,
+    KD_z: 0.5,
+    
+    KP_yaw: 0.5,
+    KI_yaw: 0.5,
+    KD_yaw: 0.5,
+    
+    TAKEOFF_HEIGHT: 0.05,
+    TAKEOFF_THROTTLE: 0.4,
+    TAKEOFF_THROTTLE_TIME: 0.4,
+    LAND_TIME: 5.0
+}
