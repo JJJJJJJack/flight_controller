@@ -1,0 +1,15 @@
+<?xml version="1.0"?>
+<launch>
+  <arg name="joy_dev" default="/dev/input/js0" />
+
+  <!-- PID parameters -->
+  <rosparam file="$(find flight_controller)/config/pid_Bicopter.yaml"/>
+  
+  <!-- Controller -->
+  <node name="flight_controller" pkg="flight_controller" type="bicopter_optitrack_controller" respawn="true" output="screen">
+    <!--maxAngle in degrees defines the maximum angle set in bf configurator-->
+    <param name="maxAngle"   value="60"/>
+  </node>
+  
+
+</launch>

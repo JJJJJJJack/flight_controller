@@ -1,22 +1,25 @@
 controller: {
-    KP_x: 0.5,
-    KI_x: 0.5,
-    KD_x: 0.5,
+    KP_x: 0.25,
+    KI_x: 0.05,
+    KD_x: 0.16,
+    X_limit: 0.5,
     
-    KP_y: 0.5,
-    KI_y: 0.5,
-    KD_y: 0.5,
+    KP_y: 0.4,
+    KI_y: 0.05,
+    KD_y: 0.3,
+    Y_limit: 0.5,
     
-    KP_z: 0.5,
-    KI_z: 0.5,
-    KD_z: 0.5,
+    KP_z: 0.18,
+    KI_z: 0.05,
+    KD_z: 0.08,
+    Z_limit: 0.5,
     
-    KP_yaw: 0.5,
-    KI_yaw: 0.5,
-    KD_yaw: 0.5,
+    KP_yaw: 0.2,
+    KI_yaw: 0.05,
+    KD_yaw: 0.05,
     
     TAKEOFF_HEIGHT: 0.05,
-    TAKEOFF_THROTTLE: 0.4,
-    TAKEOFF_THROTTLE_TIME: 0.4,
+    TAKEOFF_THROTTLE: 0.46,
+    TAKEOFF_THROTTLE_TIME: 0.6,
     LAND_TIME: 5.0
 }
