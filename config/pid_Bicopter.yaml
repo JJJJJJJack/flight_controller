@@ -1,7 +1,7 @@
 controller: {
-    KP_x: 0.25,
+    KP_x: 0.3,
     KI_x: 0.05,
-    KD_x: 0.16,
+    KD_x: 0.2,
     X_limit: 0.5,
     
     KP_y: 0.4,
@@ -19,7 +19,7 @@ controller: {
     KD_yaw: 0.05,
     
     TAKEOFF_HEIGHT: 0.05,
-    TAKEOFF_THROTTLE: 0.46,
+    TAKEOFF_THROTTLE: 0.26,
     TAKEOFF_THROTTLE_TIME: 0.6,
     LAND_TIME: 5.0
 }

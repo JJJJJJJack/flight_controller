@@ -9,6 +9,7 @@
   <node name="flight_controller" pkg="flight_controller" type="bicopter_optitrack_controller" respawn="true" output="screen">
     <!--maxAngle in degrees defines the maximum angle set in bf configurator-->
     <param name="maxAngle"   value="60"/>
+    <param name="maxYawRate" value="300"/>
   </node>
   
 

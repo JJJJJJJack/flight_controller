@@ -28,6 +28,8 @@
 #define JOY_CONTROL_LAND 4
 #define JOY_CONTROL_TYPE 5
 
+// Joy stick nob land threshold, Land signal will only be triggered at value lower
+#define JOY_LAND_NOB_THRESHOLD -0.9f
 
 using namespace std;
 
@@ -42,6 +44,8 @@ typedef enum FLIGHT_MODE
 
 FLIGHT_MODE flight_mode = PASS_THROUGH, flight_mode_previous = PASS_THROUGH;
 geometry_msgs::Twist cmd_vel, ctrl_error;
+string QUAD_NAME;
+char TF_GOAL_NAME[100], TF_QUAD_NAME[100], TF_ORIGIN_NAME[100];
 geometry_msgs::PoseStamped pose_world, goal_world, origin_world, pose_local, goal_local;
 geometry_msgs::Vector3 goal_euler;
 geometry_msgs::Vector3Stamped debug_data;
@@ -74,7 +78,7 @@ void joystick_callback(const sensor_msgs::Joy& message){
   if(joystick_input.axes[JOY_CONTROL_TYPE] == 0){
     flight_mode = PASS_THROUGH;
   }else if(flight_mode == PASS_THROUGH)
-    if(TRANSFORM_READY == true && joystick_input.axes[JOY_CONTROL_LAND] > 0){
+    if(TRANSFORM_READY == true && joystick_input.axes[JOY_CONTROL_LAND] > JOY_LAND_NOB_THRESHOLD){
       // Only set takeoff from pass through when pose feedback is ready.
       flight_mode = AUTO_TAKEOFF;
     }else{
@@ -86,7 +90,7 @@ void joystick_callback(const sensor_msgs::Joy& message){
 void goal_callback(const geometry_msgs::PoseStamped& message){
   if(flight_mode != AUTO_LAND){
     goal_world = message;
-    goal_local = frame_transform(goal_world, origin_world);
+    goal_local = goal_world;
   }
   static tf::TransformBroadcaster br;
   tf::Transform transform;
@@ -103,7 +107,7 @@ void goal_callback(const geometry_msgs::PoseStamped& message){
   tf::Quaternion q_goal;
   q_goal.setRPY(0, 0, -yaw_goal);
   transform.setRotation(q_goal);
-  br.sendTransform(tf::StampedTransform(transform, ros::Time::now(), "world", "goal"));
+  br.sendTransform(tf::StampedTransform(transform, ros::Time::now(), "world", TF_GOAL_NAME));
 }
 
 void land_callback(const std_msgs::Int8& message){
@@ -119,9 +123,9 @@ void vrpn_pose_callback(const geometry_msgs::PoseStamped& message){
 
   static tf::TransformBroadcaster br;
   tf::Transform transform, transform_origin;
-  transform.setOrigin(tf::Vector3(pose_local.pose.position.x,
-				  pose_local.pose.position.y,
-				  pose_local.pose.position.z));
+  transform.setOrigin(tf::Vector3(pose_world.pose.position.x,
+				  pose_world.pose.position.y,
+				  pose_world.pose.position.z));
   tf::Quaternion q0(message.pose.orientation.x,
 		   message.pose.orientation.y,
 		   message.pose.orientation.z,
@@ -132,7 +136,7 @@ void vrpn_pose_callback(const geometry_msgs::PoseStamped& message){
   tf::Quaternion q;
   q.setRPY(0, 0, yaw);
   transform.setRotation(q);
-  br.sendTransform(tf::StampedTransform(transform, ros::Time::now(), "world", "quad"));
+  br.sendTransform(tf::StampedTransform(transform, ros::Time::now(), "world", TF_QUAD_NAME));
   if(LOCALFRAME_READY == true){
     // Start publising the local frame
     transform_origin.setOrigin(tf::Vector3(origin_world.pose.position.x,
@@ -148,7 +152,7 @@ void vrpn_pose_callback(const geometry_msgs::PoseStamped& message){
     tf::Quaternion q_origin;
     q_origin.setRPY(0, 0, yaw_origin);
     transform_origin.setRotation(q_origin);
-    br.sendTransform(tf::StampedTransform(transform_origin, ros::Time::now(), "world", "origin"));
+    br.sendTransform(tf::StampedTransform(transform_origin, ros::Time::now(), "world", TF_ORIGIN_NAME));
   }
 }
 
@@ -174,21 +178,37 @@ int main(int argc, char **argv)
 
   ros::init(argc, argv, "bicopter_optitrack_controller");
   ros::NodeHandle n;
+  ros::NodeHandle nh("~");
+  nh.param<std::string>("QUAD_NAME", QUAD_NAME, "jackQuad");
+  char DEVICE_NAME[100];
+  strcpy(DEVICE_NAME, "/vrpn_client_node/");
+  strcat(DEVICE_NAME, QUAD_NAME.c_str());
+  strcat(DEVICE_NAME, "/pose");
+  cout<<DEVICE_NAME<<endl;
+  
+  strcpy(TF_GOAL_NAME, QUAD_NAME.c_str());
+  strcat(TF_GOAL_NAME, "goal");
+  strcpy(TF_QUAD_NAME, QUAD_NAME.c_str());
+  strcpy(TF_ORIGIN_NAME, QUAD_NAME.c_str());
+  strcat(TF_ORIGIN_NAME, "origin");
+
 	
   ros::Rate loop_rate(ros_freq);
   
   ros::Subscriber sub_joy       = n.subscribe("/joy", 1, joystick_callback);
-  ros::Subscriber sub_pose       = n.subscribe("/vrpn_client_node/jackQuad/pose", 2, vrpn_pose_callback);
-  ros::Subscriber sub_goal       = n.subscribe("/goal", 1, goal_callback);
-  ros::Subscriber sub_land       = n.subscribe("/land", 5, land_callback);
-  ros::Subscriber sub_euler      = n.subscribe("/goal_angle", 1, goalEuler_callback);
-  ros::Publisher pub_joy_output = n.advertise<sensor_msgs::Joy>("/joy_control", 5);
-  ros::Publisher pub_ctrl_error = n.advertise<geometry_msgs::Twist>("/error", 5);
-  ros::Publisher pub_debug_data = n.advertise<geometry_msgs::Vector3Stamped>("/flight_control_debug", 1);
+  ros::Subscriber sub_pose       = n.subscribe(DEVICE_NAME, 2, vrpn_pose_callback);
+  ros::Subscriber sub_goal       = n.subscribe("goal", 1, goal_callback);
+  ros::Subscriber sub_land       = n.subscribe("land", 5, land_callback);
+  ros::Subscriber sub_euler      = n.subscribe("goal_angle", 1, goalEuler_callback);
+  ros::Publisher pub_joy_output = n.advertise<sensor_msgs::Joy>("joy_control", 5);
+  ros::Publisher pub_ctrl_error = n.advertise<geometry_msgs::Twist>("error", 5);
+  ros::Publisher pub_debug_data = n.advertise<geometry_msgs::Vector3Stamped>("flight_control_debug", 1);
 
-  ros::param::get("/flight_controller/maxAngle", EULER2JOY);
+  nh.param<float>("maxAngle", EULER2JOY, 55.0f);
+  //ros::param::get("/flight_controller/maxAngle", EULER2JOY);
   EULER2JOY = EULER2JOY/180.0*M_PI;
-  ros::param::get("/flight_controller/maxYawRate", YAWRATE2JOY);
+  nh.param<float>("maxYawRate", YAWRATE2JOY, 300.0f);
+  //ros::param::get("/flight_controller/maxYawRate", YAWRATE2JOY);
   YAWRATE2JOY = YAWRATE2JOY/180.0*M_PI;
 
   // PID for x
@@ -247,7 +267,7 @@ int main(int argc, char **argv)
     
     tf::StampedTransform transform;
     try{
-      listener.lookupTransform("quad", "goal", ros::Time(0), transform);
+      listener.lookupTransform(TF_QUAD_NAME, TF_GOAL_NAME, ros::Time(0), transform);
       TRANSFORM_READY = true;
     }catch(tf::TransformException &ex){
       // Warn in AUTO mode without feedback
@@ -257,7 +277,6 @@ int main(int argc, char **argv)
       }
     }
         
-    
     // Main logic
     switch(flight_mode){
     case PASS_THROUGH:{
@@ -277,7 +296,7 @@ int main(int argc, char **argv)
       // Only allow takeoff when joystick is set on arm
       if(joystick_input.buttons[JOY_CHANNEL_ARM] == 0){
 	ROS_WARN_THROTTLE(1, "Warning: Waiting for arming command from joy...");
-      }else if(joystick_input.axes[JOY_CONTROL_LAND] <= 0){
+      }else if(joystick_input.axes[JOY_CONTROL_LAND] <= JOY_LAND_NOB_THRESHOLD){
 	ROS_WARN_THROTTLE(1, "Warning: Landing mode...");
       }else{
 	// Put default arming and flight mode in joystick
@@ -332,7 +351,7 @@ int main(int argc, char **argv)
       joystick_output.axes[JOY_CHANNEL_YAW]      = saturate(yaw_sp,     -1, 1);
 
       // Swtich to land mode when triggered by the nob
-      if(joystick_input.axes[JOY_CONTROL_LAND] <= 0){
+      if(joystick_input.axes[JOY_CONTROL_LAND] <= JOY_LAND_NOB_THRESHOLD){
 	flight_mode = AUTO_LAND;
 	// Record the first land height for accurate land timing
 	land_height = pose_local.pose.position.z;
