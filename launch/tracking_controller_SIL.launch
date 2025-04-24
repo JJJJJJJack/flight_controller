@@ -1,0 +1,41 @@
+<?xml version="1.0"?>
+<launch>
+  
+  <!-- Dynamics -->
+  <node name="multimodequad_ros" pkg="multimodequad_ros" type="multimodequad_ros" respawn="true" output="screen">
+  </node>
+
+  <!-- PID parameters -->
+  <rosparam file="$(find flight_controller)/config/pid_Bicopter.yaml"/>
+  
+  <!-- Controller -->
+  <node name="tracking_controller_SIL" pkg="flight_controller" type="tracking_controller_SIL" respawn="true" output="screen">
+  </node>
+
+  <!-- Temporary waypoint signal publisher -->
+  <!--node pkg="signal_sub_pub" type="signal_sub_pub" name="signal_sub_pub">
+  </node-->
+
+  <!-- Minimum Snap trajectory generator -->
+  <!--node pkg="waypoint_trajectory_generator" type="trajectory_generator_node" name="trajectory_generator_node" output="screen" required = "true">
+    <param name="planning/vel"       value="4.0"  />
+    <param name="planning/acc"       value="4.0"  />
+    <param name="planning/dev_order" value="4"    />
+    <param name="planning/min_order" value="3"    />
+    <param name="vis/vis_traj_width" value="0.15" />
+  </node-->
+
+  <!--- Trajectory planner -->
+  <node name="planner" pkg="mav_trajectory_generation_example" type="trajectory_generation_waypoints" output="screen">
+      <rosparam command="load" file="$(find mav_trajectory_generation_example)/cfg/firefly_params.yaml"/>
+      <remap from="uav_pose" to="odometry_sensor1/odometry"/>
+  </node>
+
+  <!--- Waypoint publisher -->
+  <node name="waypoints_pub" pkg="mav_trajectory_generation_example" type="trajectory_waypoint_publisher" output="screen">
+  </node>
+  
+  <node pkg="flight_controller" type="uav_kf.py" name="uavKf" output="screen">
+  </node>
+
+</launch>

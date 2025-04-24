@@ -9,7 +9,12 @@ find_package(catkin REQUIRED
   rospy
   std_msgs
   tf
-  message_generation)
+  message_generation
+  mav_msgs
+  mav_planning_msgs)
+
+find_package(Eigen3 REQUIRED)
+set(Eigen3_INCLUDE_DIRS ${EIGEN3_INCLUDE_DIR})
 
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
@@ -46,6 +51,7 @@ catkin_package(
 #  LIBRARIES serial_to_sbus
   CATKIN_DEPENDS #other_catkin_pkg
   message_runtime  std_msgs tf
+  mav_planning_msgs mav_msgs
 #  DEPENDS system_lib
 )
 
@@ -59,6 +65,7 @@ catkin_package(
 include_directories(
   ${catkin_INCLUDE_DIRS}
   utility
+  ${Eigen3_INCLUDE_DIRS}
 #  ${EIGEN3_INCLUDE_DIR}
 )
 
@@ -67,9 +74,16 @@ include_directories(
 #   src/${PROJECT_NAME}/flight_controller.cpp
 # )
 
+catkin_install_python(PROGRAMS src/uav_kf.py
+  DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION})
+
 ## Declare a cpp executable
 add_executable(bicopter_optitrack_controller 
   src/bicopter_optitrack_controller.cpp
+)
+
+add_executable(tracking_controller_SIL 
+  src/tracking_controller_SIL.cpp
 )
 
 ## Add cmake target dependencies of the executable/library
@@ -78,5 +92,9 @@ add_executable(bicopter_optitrack_controller
 
 ## Specify libraries to link a library or executable target against
 target_link_libraries(bicopter_optitrack_controller
+  ${catkin_LIBRARIES}
+)
+
+target_link_libraries(tracking_controller_SIL
   ${catkin_LIBRARIES}
 )
