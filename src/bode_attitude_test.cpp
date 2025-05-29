@@ -2,13 +2,14 @@
 #include "std_msgs/String.h"
 #include <iostream>
 #include <fstream>
-
+#include <math.h>
 #include <time.h>
 
 #include <tf/transform_broadcaster.h>
 #include <tf/transform_listener.h>
 
 #include "geometry_msgs/Twist.h"
+#include "geometry_msgs/TwistStamped.h"
 #include "geometry_msgs/PoseStamped.h"
 #include "sensor_msgs/Joy.h"
 #include "std_msgs/Int8.h"
@@ -30,7 +31,9 @@
 
 // Joy stick nob land threshold, Land signal will only be triggered at value lower
 #define JOY_LAND_NOB_THRESHOLD -0.9f
-
+// Bode TEST time
+#define TESTTIME 10.0f
+#define PI acos(-1)
 using namespace std;
 
 typedef enum FLIGHT_MODE
@@ -40,20 +43,26 @@ typedef enum FLIGHT_MODE
    AUTO_LAND,
    AUTO_FLYING,
    AUTO_IDLE,
+   AUTO_BODE_TEST,
   } FLIGHT_MODE;
 
 FLIGHT_MODE flight_mode = PASS_THROUGH, flight_mode_previous = PASS_THROUGH;
-geometry_msgs::Twist cmd_vel, ctrl_error;
+geometry_msgs::Twist cmd_vel;
+geometry_msgs::TwistStamped ctrl_error;
 string QUAD_NAME;
 char TF_GOAL_NAME[100], TF_QUAD_NAME[100], TF_ORIGIN_NAME[100];
 geometry_msgs::PoseStamped pose_world, goal_world, origin_world, pose_local, goal_local;
 geometry_msgs::Vector3 goal_euler;
 geometry_msgs::Vector3Stamped debug_data;
+geometry_msgs::Vector3Stamped yaw_debug_data;
+geometry_msgs::Vector3Stamped pitch_debug_data;
 sensor_msgs::Joy joystick_input, joystick_output;
 bool JOY_READY = false, CONTROLLER_READY = false, TRANSFORM_READY = false, LOCALFRAME_READY = false, GOAL_EULER_READY = false;
+struct timeval vrpn_now, vrpn_last;
 ros::Time last_vrpn_server_time;
-bool VRPN_UPDATE = false;
+bool first_vrpn = true, VRPN_UPDATE = false;
 double dynamic_DT = 0;
+double pitch_global = 0;
 
 geometry_msgs::PoseStamped frame_transform(geometry_msgs::PoseStamped world, geometry_msgs::PoseStamped origin){
   geometry_msgs::PoseStamped local = world;
@@ -85,7 +94,7 @@ void joystick_callback(const sensor_msgs::Joy& message){
       // Only set takeoff from pass through when pose feedback is ready.
       flight_mode = AUTO_TAKEOFF;
     }else{
-      ROS_ERROR_THROTTLE(1, "No position feedback yet! Please double check!");
+      ROS_ERROR_THROTTLE(1, "No position feedback or Landing mode! Please double check!");
       ROS_ERROR_THROTTLE(1, "Fallback to PASS_THROUGH mode...");
     }
 }
@@ -108,7 +117,7 @@ void goal_callback(const geometry_msgs::PoseStamped& message){
   tf::Matrix3x3 mat_goal(q);
   mat_goal.getEulerYPR(yaw_goal, pitch_goal, roll_goal);
   tf::Quaternion q_goal;
-  q_goal.setRPY(0, 0, -yaw_goal);
+  q_goal.setEulerZYX(-yaw_goal, 0, 0);
   transform.setRotation(q_goal);
   br.sendTransform(tf::StampedTransform(transform, ros::Time::now(), "world", TF_GOAL_NAME));
 }
@@ -121,9 +130,24 @@ void land_callback(const std_msgs::Int8& message){
 
 void vrpn_pose_callback(const geometry_msgs::PoseStamped& message){
   VRPN_UPDATE = true;
+  // duration time test
+  double vrpn_dt = 0.0f;
+  if (first_vrpn)
+  {
+    first_vrpn = false;
+    gettimeofday(&vrpn_last,NULL);
+  }
+  else
+  {
+    gettimeofday(&vrpn_now,NULL);
+    vrpn_dt = vrpn_now.tv_sec - vrpn_last.tv_sec + 1e-6 * (vrpn_now.tv_usec - vrpn_last.tv_usec);
+    //cout<<"vrpn_dt:  " <<vrpn_dt<<endl;
+    vrpn_last = vrpn_now;
+  }
   dynamic_DT = message.header.stamp.toSec() - last_vrpn_server_time.toSec();
   last_vrpn_server_time = message.header.stamp;
 
+  //CONTROLLER_READY = true;
   pose_world = message;
   pose_local = frame_transform(pose_world, origin_world);
 
@@ -139,8 +163,9 @@ void vrpn_pose_callback(const geometry_msgs::PoseStamped& message){
   tfScalar yaw, pitch, roll;
   tf::Matrix3x3 mat(q0);
   mat.getEulerYPR(yaw, pitch, roll);
+  pitch_global = pitch;
   tf::Quaternion q;
-  q.setRPY(0, 0, yaw);
+  q.setEulerZYX(yaw, 0, 0);
   transform.setRotation(q);
   br.sendTransform(tf::StampedTransform(transform, ros::Time::now(), "world", TF_QUAD_NAME));
   if(LOCALFRAME_READY == true){
@@ -154,9 +179,9 @@ void vrpn_pose_callback(const geometry_msgs::PoseStamped& message){
 		      origin_world.pose.orientation.w);
     tfScalar yaw_origin, pitch_origin, roll_origin;
     tf::Matrix3x3 mat_origin(q1);
-    mat.getEulerYPR(yaw_origin, pitch_origin, roll_origin);
+    mat_origin.getEulerYPR(yaw_origin, pitch_origin, roll_origin);
     tf::Quaternion q_origin;
-    q_origin.setRPY(0, 0, yaw_origin);
+    q_origin.setEulerZYX(0, 0, yaw_origin);
     transform_origin.setRotation(q_origin);
     br.sendTransform(tf::StampedTransform(transform_origin, ros::Time::now(), "world", TF_ORIGIN_NAME));
   }
@@ -181,11 +206,13 @@ int main(int argc, char **argv)
   float TAKEOFF_HEIGHT, TAKEOFF_THROTTLE, TAKEOFF_THROTTLE_TIME, LAND_TIME;
   float ros_dt = 1.0/ros_freq;
   float EULER2JOY, YAWRATE2JOY;
+  float bode_omega;
+  float bode_amp = 0.6;
 
   ros::init(argc, argv, "bicopter_optitrack_controller");
   ros::NodeHandle n;
   ros::NodeHandle nh("~");
-  nh.param<std::string>("QUAD_NAME", QUAD_NAME, "jackQuad");
+  nh.param<std::string>("QUAD_NAME", QUAD_NAME, "jackBi");
   char DEVICE_NAME[100];
   strcpy(DEVICE_NAME, "/vrpn_client_node/");
   strcat(DEVICE_NAME, QUAD_NAME.c_str());
@@ -202,13 +229,15 @@ int main(int argc, char **argv)
   ros::Rate loop_rate(ros_freq);
   
   ros::Subscriber sub_joy       = n.subscribe("/joy", 1, joystick_callback);
-  ros::Subscriber sub_pose       = n.subscribe(DEVICE_NAME, 2, vrpn_pose_callback);
+  ros::Subscriber sub_pose       = n.subscribe(DEVICE_NAME, 1, vrpn_pose_callback);
   ros::Subscriber sub_goal       = n.subscribe("goal", 1, goal_callback);
   ros::Subscriber sub_land       = n.subscribe("land", 5, land_callback);
   ros::Subscriber sub_euler      = n.subscribe("goal_angle", 1, goalEuler_callback);
   ros::Publisher pub_joy_output = n.advertise<sensor_msgs::Joy>("joy_control", 5);
-  ros::Publisher pub_ctrl_error = n.advertise<geometry_msgs::Twist>("error", 5);
+  ros::Publisher pub_ctrl_error = n.advertise<geometry_msgs::TwistStamped>("error", 5);
   ros::Publisher pub_debug_data = n.advertise<geometry_msgs::Vector3Stamped>("flight_control_debug", 1);
+  ros::Publisher yaw_rt = n.advertise<geometry_msgs::Vector3Stamped>("yaw_rt",1);
+  ros::Publisher pitch_rt = n.advertise<geometry_msgs::Vector3Stamped>("pitch_rt",1);
 
   nh.param<float>("maxAngle", EULER2JOY, 55.0f);
   //ros::param::get("/flight_controller/maxAngle", EULER2JOY);
@@ -216,6 +245,7 @@ int main(int argc, char **argv)
   nh.param<float>("maxYawRate", YAWRATE2JOY, 300.0f);
   //ros::param::get("/flight_controller/maxYawRate", YAWRATE2JOY);
   YAWRATE2JOY = YAWRATE2JOY/180.0*M_PI;
+  nh.param<float>("bode_omega", bode_omega, 3.0f);
 
   // PID for x
   ros::param::get("/controller/KP_x", KP_x);
@@ -247,6 +277,9 @@ int main(int argc, char **argv)
   tf::TransformListener listener;
   
   struct timeval tvstart, tvend;
+  struct timeval test_start, test_now;
+  double throttle_intest = 0.0;
+
   gettimeofday(&tvstart,NULL);
 
   // PID controller init
@@ -260,9 +293,13 @@ int main(int argc, char **argv)
   controller_pose_yaw.limitIntegral(YAW_limit);
 
   int count = 0;
+  int pre_test_button = 1;
   srand((int)time(0));
   bool Start_timer = true, FIRSTFRAME_SKIPPED = false;
-  float idletime = 0, land_height = 0;;
+  bool Enable_Test = false;
+  float idletime = 0, land_height = 0;
+  float xlim = 1.5, ylim = 1.5, zlim = 0.8;
+  float xe = 0, ye = 0, ze = 0;
 
   while (ros::ok())
   {
@@ -270,11 +307,14 @@ int main(int argc, char **argv)
     double totaltime = tvend.tv_sec - tvstart.tv_sec + 1e-6 * (tvend.tv_usec - tvstart.tv_usec);
 
     // Listen to tf transform in auto mode
-    
     tf::StampedTransform transform;
     try{
       listener.lookupTransform(TF_QUAD_NAME, TF_GOAL_NAME, ros::Time(0), transform);
       TRANSFORM_READY = true;
+      tfScalar roll_test, pitch_test, yaw_test;
+      tf::Quaternion q_test;
+      tf::Matrix3x3(transform.getRotation()).getRPY(roll_test, pitch_test, yaw_test);
+      q_test = transform.getRotation();
     }catch(tf::TransformException &ex){
       // Warn in AUTO mode without feedback
       if(flight_mode != PASS_THROUGH){
@@ -282,7 +322,6 @@ int main(int argc, char **argv)
 	TRANSFORM_READY = false;
       }
     }
-        
     // Main logic
     switch(flight_mode){
     case PASS_THROUGH:{
@@ -307,7 +346,6 @@ int main(int argc, char **argv)
       }else{
 	// Put default arming and flight mode in joystick
 	joystick_output.buttons[JOY_CHANNEL_ARM] = 1;
-	joystick_output.buttons[JOY_CHANNEL_FLIGHT_MODE] = 1;
 	// Take off (gradually increase throttle to predefiend throttle command)
 	if(joystick_output.axes[JOY_CHANNEL_THROTTLE] < TAKEOFF_THROTTLE)
 	  joystick_output.axes[JOY_CHANNEL_THROTTLE] += ros_dt/TAKEOFF_THROTTLE_TIME*TAKEOFF_THROTTLE;
@@ -328,10 +366,15 @@ int main(int argc, char **argv)
       // Use current x,y as goal and gradually reduce height
       if(goal_local.pose.position.z >= -0.5)
 	goal_local.pose.position.z -= ros_dt/LAND_TIME*land_height;
+      // Gradually decreases the throttle at low altitude
+      if(pose_local.pose.position.z <= origin_world.pose.position.z + 0.05f){
+        TAKEOFF_THROTTLE -= 0.001f;
+      }
       // IDLE motor after land
-      if(pose_local.pose.position.z <= TAKEOFF_HEIGHT / 1.2){
-	flight_mode = AUTO_IDLE;
-	idletime = totaltime;
+      if(TAKEOFF_THROTTLE <= 0.1){
+      	flight_mode = AUTO_IDLE;
+      	idletime = totaltime;
+        break;
       }
       // Intential fall-through
     }
@@ -339,23 +382,39 @@ int main(int argc, char **argv)
       ROS_INFO_STREAM_THROTTLE(5, "FLYING!");
       // Implementing main controller
       double roll_sp, pitch_sp, yaw_sp, throttle_sp;
-      tf::Matrix3x3(transform.getRotation()).getRPY(roll, pitch, yaw);
+      tf::Matrix3x3(transform.getRotation()).getEulerYPR(yaw, pitch, roll);
+
+      // Publish yaw debug data
+      yaw_debug_data.header.stamp = ros::Time::now();
+      yaw_debug_data.header.seq = count;
+      yaw_debug_data.header.frame_id = "yaw_debug_data";
+      yaw_debug_data.vector.x = 0;
+      yaw_debug_data.vector.y = pitch_global;
+      yaw_debug_data.vector.z = yaw;
+
+      // yaw correction
+      if(yaw < -PI)
+        yaw += 2*PI;
+
+      //Publish yaw debug data
+      yaw_debug_data.vector.x = yaw;
+      yaw_rt.publish(yaw_debug_data);
       // Only update the PID controller when there's new VRPN data. This is to eliminate the problem when VRPN is not syncing with local ROS.
       if(VRPN_UPDATE){
         controller_pose_x.update(saturate(transform.getOrigin().x(),  -2, 2), 0, dynamic_DT);
         controller_pose_y.update(saturate(-transform.getOrigin().y(), -2, 2), 0, dynamic_DT);
         controller_pose_z.update(saturate(transform.getOrigin().z(),  -1.2, 1.2), 0, dynamic_DT);
         controller_pose_yaw.update(saturate(-yaw, -M_PI, M_PI), 0, dynamic_DT);
-        cout<<controller_pose_y.output<<endl;
         VRPN_UPDATE = false;
       }
 
       roll_sp     = saturate(controller_pose_y.output, -0.6, 0.6) + goal_euler.x/EULER2JOY;
-      pitch_sp    = saturate(controller_pose_x.output, -0.6, 0.6) - goal_euler.y/EULER2JOY;
-      yaw_sp      = saturate(controller_pose_yaw.output, -0.6, 0.6) + goal_euler.z/YAWRATE2JOY;
-      throttle_sp = saturate(controller_pose_z.output, -0.6, 0.6) + TAKEOFF_THROTTLE;
+      pitch_sp    = saturate(controller_pose_x.output, -0.6, 0.6) - goal_euler.y/EULER2JOY;        
+      yaw_sp      = joystick_input.axes[JOY_CHANNEL_YAW];//saturate(controller_pose_yaw.output, -0.6, 0.6) + goal_euler.z/YAWRATE2JOY;//
+      throttle_sp = saturate(controller_pose_z.output, -0.05, 0.4) + TAKEOFF_THROTTLE;
 
       joystick_output = joystick_input;
+      joystick_output.buttons[JOY_CHANNEL_FLIGHT_MODE] = 1; // disable flip
       joystick_output.axes[JOY_CHANNEL_PITCH]    = saturate(pitch_sp,   -1, 1);
       joystick_output.axes[JOY_CHANNEL_ROLL]     = saturate(roll_sp,    -1, 1);
       joystick_output.axes[JOY_CHANNEL_THROTTLE] = saturate(throttle_sp, 0, 1);
@@ -363,28 +422,93 @@ int main(int argc, char **argv)
 
       // Swtich to land mode when triggered by the nob
       if(joystick_input.axes[JOY_CONTROL_LAND] <= JOY_LAND_NOB_THRESHOLD){
-	flight_mode = AUTO_LAND;
-	// Record the first land height for accurate land timing
-	land_height = pose_local.pose.position.z;
+        flight_mode = AUTO_LAND;
+        // Record the first land height for accurate land timing
+        land_height = pose_local.pose.position.z;
       }
 
+      // Switch to test mode when button changes (cannot test in 1st autoflying loop)
+      if(Enable_Test&& joystick_input.buttons[JOY_CHANNEL_FLIGHT_MODE] != pre_test_button){
+        flight_mode = AUTO_BODE_TEST;
+        gettimeofday(&test_start,NULL);
+        // Record the throttle value
+        throttle_intest = joystick_output.axes[JOY_CHANNEL_THROTTLE];
+      }
+	    pre_test_button = joystick_input.buttons[JOY_CHANNEL_FLIGHT_MODE];
+      
+      Enable_Test = true;
+      
+
       // Publish error
-      ctrl_error.linear.x = transform.getOrigin().x();
-      ctrl_error.linear.y = transform.getOrigin().y();
-      ctrl_error.linear.z = transform.getOrigin().z();
-      ctrl_error.angular.z = yaw;
+      ctrl_error.header.stamp = ros::Time::now();
+      ctrl_error.header.seq = count;
+      ctrl_error.twist.linear.x = transform.getOrigin().x();
+      ctrl_error.twist.linear.y = transform.getOrigin().y();
+      ctrl_error.twist.linear.z = transform.getOrigin().z();
+      ctrl_error.twist.angular.z = yaw;
       pub_ctrl_error.publish(ctrl_error);
       break;
-    }
+      }
+
+    case AUTO_BODE_TEST:{
+      ROS_INFO_STREAM_THROTTLE(1, "TESTING...");
+      gettimeofday(&test_now,NULL);
+      double testtime = test_now.tv_sec - test_start.tv_sec + 1e-6 * (test_now.tv_usec - test_start.tv_usec);
+
+      // Attitude Sin command
+      joystick_output = joystick_input;
+      joystick_output.buttons[JOY_CHANNEL_FLIGHT_MODE] = 1; // disable flip
+      joystick_output.axes[JOY_CHANNEL_PITCH]    = bode_amp*sin(bode_omega*testtime);
+      joystick_output.axes[JOY_CHANNEL_ROLL]     = 0;
+      joystick_output.axes[JOY_CHANNEL_THROTTLE] = saturate(throttle_intest*1.0, 0, 1);
+      joystick_output.axes[JOY_CHANNEL_YAW]      = 0;
+
+      // Switch back to flying mode when position offset too large
+      if(VRPN_UPDATE){
+        xe = saturate(transform.getOrigin().x(),  -2, 2);
+        ye = saturate(-transform.getOrigin().y(), -2, 2);
+        ze = saturate(transform.getOrigin().z(),  -1.2, 1.2);
+        controller_pose_z.update(ze, 0, dynamic_DT);
+        //controller_pose_yaw.update(saturate(-yaw, -M_PI, M_PI), 0, dynamic_DT);
+        VRPN_UPDATE = false;
+      }
+
+      //control throttle
+      double throttle_sp;
+      throttle_sp = saturate(controller_pose_z.output, -0.05, 0.4) + TAKEOFF_THROTTLE;
+      joystick_output.axes[JOY_CHANNEL_THROTTLE] = saturate(throttle_sp, 0, 1);
+
+      // Switch back to flying mode when time is off or button changes
+      if(testtime > TESTTIME || joystick_input.buttons[JOY_CHANNEL_FLIGHT_MODE] != pre_test_button || fabs(xe) > xlim || fabs(ye) > ylim || fabs(ze) > zlim ){
+        flight_mode = AUTO_FLYING;
+        // Make sure to reset the controller to avoid filtering the sudden change in error and derror
+        controller_pose_x.controllerFirstRun = true;
+        controller_pose_y.controllerFirstRun = true;
+        controller_pose_z.controllerFirstRun = true;
+        controller_pose_yaw.controllerFirstRun = true;
+      }
+      pre_test_button = joystick_input.buttons[JOY_CHANNEL_FLIGHT_MODE];
+
+      break;
+  }
     case AUTO_IDLE:{
       ROS_INFO_STREAM_THROTTLE(5, "IDLE...");
       joystick_output.axes[JOY_CHANNEL_THROTTLE] = 0;
       // Disarm after 3 sec in idle
       if(totaltime - idletime > 3.0)
-	joystick_output.axes[JOY_CHANNEL_ARM] = 0;
+	joystick_output.buttons[JOY_CHANNEL_ARM] = 0;
       break;
     }
     }
+
+    // Publish pitch data
+    pitch_debug_data.header.stamp = ros::Time::now();
+    pitch_debug_data.header.seq = count;
+    pitch_debug_data.header.frame_id = "pitch_debug_data";
+    pitch_debug_data.vector.x = 0;
+    pitch_debug_data.vector.y = pitch_global;
+    pitch_debug_data.vector.z = 0;
+    pitch_rt.publish(pitch_debug_data);
 
     // Publish debug data
     debug_data.header.stamp = ros::Time::now();
@@ -402,8 +526,10 @@ int main(int argc, char **argv)
     joystick_output.header.stamp = ros::Time::now();
     joystick_output.header.seq = count;
     joystick_output.header.frame_id = "joystick_output";
-    if(JOY_READY == true)
+    if(JOY_READY == true){
+      joystick_output.buttons[JOY_CHANNEL_FLIGHT_MODE] = 1; // disable flip
       pub_joy_output.publish(joystick_output);
+    }
     
     ros::spinOnce();
     loop_rate.sleep();

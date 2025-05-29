@@ -30,7 +30,10 @@
 
 // Joy stick nob land threshold, Land signal will only be triggered at value lower
 #define JOY_LAND_NOB_THRESHOLD -0.9f
-
+#define JOY_THRESHOLD 0.1
+#define VTW_X 1
+#define VTW_Y 1
+#define VTW_Z 2
 using namespace std;
 
 typedef enum FLIGHT_MODE
@@ -40,20 +43,21 @@ typedef enum FLIGHT_MODE
    AUTO_LAND,
    AUTO_FLYING,
    AUTO_IDLE,
+   POSE_MODE,
+   MANUAL_FLYING,
   } FLIGHT_MODE;
 
 FLIGHT_MODE flight_mode = PASS_THROUGH, flight_mode_previous = PASS_THROUGH;
 geometry_msgs::Twist cmd_vel, ctrl_error;
 string QUAD_NAME;
 char TF_GOAL_NAME[100], TF_QUAD_NAME[100], TF_ORIGIN_NAME[100];
-geometry_msgs::PoseStamped pose_world, goal_world, origin_world, pose_local, goal_local;
+int situation;
+float land_height=0;
+geometry_msgs::PoseStamped pose_world, goal_world, origin_world, pose_local, goal_local, pose_touch, pose_land;
 geometry_msgs::Vector3 goal_euler;
 geometry_msgs::Vector3Stamped debug_data;
 sensor_msgs::Joy joystick_input, joystick_output;
 bool JOY_READY = false, CONTROLLER_READY = false, TRANSFORM_READY = false, LOCALFRAME_READY = false, GOAL_EULER_READY = false;
-ros::Time last_vrpn_server_time;
-bool VRPN_UPDATE = false;
-double dynamic_DT = 0;
 
 geometry_msgs::PoseStamped frame_transform(geometry_msgs::PoseStamped world, geometry_msgs::PoseStamped origin){
   geometry_msgs::PoseStamped local = world;
@@ -117,13 +121,14 @@ void land_callback(const std_msgs::Int8& message){
   // Accept only land mode
   if(message.data == 1 && flight_mode != AUTO_IDLE && flight_mode != PASS_THROUGH)
     flight_mode = AUTO_LAND;
+    pose_land.pose.position.x=pose_local.pose.position.x;
+    pose_land.pose.position.y=pose_local.pose.position.y;
+    pose_land.pose.position.z=pose_local.pose.position.z;
+    land_height=pose_land.pose.position.z;
 }
 
 void vrpn_pose_callback(const geometry_msgs::PoseStamped& message){
-  VRPN_UPDATE = true;
-  dynamic_DT = message.header.stamp.toSec() - last_vrpn_server_time.toSec();
-  last_vrpn_server_time = message.header.stamp;
-
+  //CONTROLLER_READY = true;
   pose_world = message;
   pose_local = frame_transform(pose_world, origin_world);
 
@@ -262,7 +267,7 @@ int main(int argc, char **argv)
   int count = 0;
   srand((int)time(0));
   bool Start_timer = true, FIRSTFRAME_SKIPPED = false;
-  float idletime = 0, land_height = 0;;
+  float idletime = 0;
 
   while (ros::ok())
   {
@@ -317,6 +322,10 @@ int main(int argc, char **argv)
 	// If the current local Z is greater than TAKEOFF_HEIGHT, finish takeoff process
 	if(FIRSTFRAME_SKIPPED && pose_local.pose.position.z > TAKEOFF_HEIGHT){
 	  flight_mode = AUTO_FLYING;
+	  controller_pose_x.controllerFirstRun =true;
+          controller_pose_y.controllerFirstRun =true;
+          controller_pose_z.controllerFirstRun =true;
+          controller_pose_yaw.controllerFirstRun =true;
 	}
 	FIRSTFRAME_SKIPPED = true;
       }
@@ -324,34 +333,50 @@ int main(int argc, char **argv)
     }
     case AUTO_LAND:{
       ROS_INFO_STREAM_THROTTLE(1, "LANDING...");
-      
       // Use current x,y as goal and gradually reduce height
-      if(goal_local.pose.position.z >= -0.5)
-	goal_local.pose.position.z -= ros_dt/LAND_TIME*land_height;
+      if(pose_land.pose.position.z >= -0.5)
+	pose_land.pose.position.z -= ros_dt/LAND_TIME*land_height;
       // IDLE motor after land
       if(pose_local.pose.position.z <= TAKEOFF_HEIGHT / 1.2){
 	flight_mode = AUTO_IDLE;
+	controller_pose_x.controllerFirstRun =true;
+        controller_pose_y.controllerFirstRun =true;
+        controller_pose_z.controllerFirstRun =true;
+        controller_pose_yaw.controllerFirstRun =true;
 	idletime = totaltime;
       }
       // Intential fall-through
+      double roll_sp, pitch_sp, yaw_sp, throttle_sp;
+      tf::Matrix3x3(transform.getRotation()).getRPY(roll, pitch, yaw);
+      controller_pose_x.update(pose_land.pose.position.x, saturate(pose_local.pose.position.x,  -2, 2), ros_dt);
+      controller_pose_y.update(pose_land.pose.position.y, saturate(-pose_local.pose.position.y, -2, 2), ros_dt);
+      controller_pose_z.update(pose_land.pose.position.z, saturate(pose_local.pose.position.z,  -2, 2), ros_dt);
+      controller_pose_yaw.update(saturate(-yaw, -M_PI, M_PI), 0, ros_dt);
+
+      roll_sp     = saturate(controller_pose_y.output, -0.6, 0.6) + goal_euler.x/EULER2JOY;
+      pitch_sp    = saturate(controller_pose_x.output, -0.6, 0.6) - goal_euler.y/EULER2JOY;
+      yaw_sp      = saturate(controller_pose_yaw.output, -0.6, 0.6) + goal_euler.z/YAWRATE2JOY;
+      throttle_sp = saturate(controller_pose_z.output, -0.6, 0.6) + TAKEOFF_THROTTLE;
+
+      joystick_output = joystick_input;
+      joystick_output.axes[JOY_CHANNEL_PITCH]    = saturate(pitch_sp,   -1, 1);
+      joystick_output.axes[JOY_CHANNEL_ROLL]     = saturate(roll_sp,    -1, 1);
+      joystick_output.axes[JOY_CHANNEL_THROTTLE] = saturate(throttle_sp, 0, 1);
+      joystick_output.axes[JOY_CHANNEL_YAW]      = saturate(yaw_sp,     -1, 1);
+      break;
     }
     case AUTO_FLYING:{
       ROS_INFO_STREAM_THROTTLE(5, "FLYING!");
       // Implementing main controller
       double roll_sp, pitch_sp, yaw_sp, throttle_sp;
       tf::Matrix3x3(transform.getRotation()).getRPY(roll, pitch, yaw);
-      // Only update the PID controller when there's new VRPN data. This is to eliminate the problem when VRPN is not syncing with local ROS.
-      if(VRPN_UPDATE){
-        controller_pose_x.update(saturate(transform.getOrigin().x(),  -2, 2), 0, dynamic_DT);
-        controller_pose_y.update(saturate(-transform.getOrigin().y(), -2, 2), 0, dynamic_DT);
-        controller_pose_z.update(saturate(transform.getOrigin().z(),  -1.2, 1.2), 0, dynamic_DT);
-        controller_pose_yaw.update(saturate(-yaw, -M_PI, M_PI), 0, dynamic_DT);
-        cout<<controller_pose_y.output<<endl;
-        VRPN_UPDATE = false;
-      }
+      controller_pose_x.update(saturate(transform.getOrigin().x(),  -2, 2), 0, ros_dt);
+      controller_pose_y.update(saturate(-transform.getOrigin().y(), -2, 2), 0, ros_dt);
+      controller_pose_z.update(saturate(transform.getOrigin().z(),  -2, 2), 0, ros_dt);
+      controller_pose_yaw.update(saturate(-yaw, -M_PI, M_PI), 0, ros_dt);
 
       roll_sp     = saturate(controller_pose_y.output, -0.6, 0.6) + goal_euler.x/EULER2JOY;
-      pitch_sp    = saturate(controller_pose_x.output, -0.6, 0.6) - goal_euler.y/EULER2JOY;
+      pitch_sp    = saturate(controller_pose_x.output, -0.6, 0.6) - goal_euler.y/EULER2JOY - 0.08;
       yaw_sp      = saturate(controller_pose_yaw.output, -0.6, 0.6) + goal_euler.z/YAWRATE2JOY;
       throttle_sp = saturate(controller_pose_z.output, -0.6, 0.6) + TAKEOFF_THROTTLE;
 
@@ -364,10 +389,21 @@ int main(int argc, char **argv)
       // Swtich to land mode when triggered by the nob
       if(joystick_input.axes[JOY_CONTROL_LAND] <= JOY_LAND_NOB_THRESHOLD){
 	flight_mode = AUTO_LAND;
+	pose_land.pose.position.x=pose_local.pose.position.x;
+        pose_land.pose.position.y=pose_local.pose.position.y;
+        pose_land.pose.position.z=pose_local.pose.position.z;
+        land_height=pose_land.pose.position.z;
 	// Record the first land height for accurate land timing
 	land_height = pose_local.pose.position.z;
       }
 
+      //control quad to predefined pose
+        if (fabs(joystick_output.axes[JOY_CHANNEL_THROTTLE] - TAKEOFF_THROTTLE) < JOY_THRESHOLD){
+          if (fabs(joystick_input.axes[JOY_CHANNEL_ROLL]) > JOY_THRESHOLD || fabs(joystick_input.axes[JOY_CHANNEL_PITCH]) > JOY_THRESHOLD){
+            flight_mode = MANUAL_FLYING;
+          }
+        }
+      
       // Publish error
       ctrl_error.linear.x = transform.getOrigin().x();
       ctrl_error.linear.y = transform.getOrigin().y();
@@ -376,6 +412,119 @@ int main(int argc, char **argv)
       pub_ctrl_error.publish(ctrl_error);
       break;
     }
+    
+   case MANUAL_FLYING:{
+      ROS_INFO_STREAM_THROTTLE(5, "MANUAL...");
+      joystick_output = joystick_input;
+      if (fabs(pose_local.pose.position.x) > VTW_X || fabs(pose_local.pose.position.y) > VTW_Y || pose_local.pose.position.z > VTW_Z || pose_local.pose.position.z < 0){
+        if (pose_local.pose.position.x > VTW_X) situation=1;
+        if (pose_local.pose.position.x < -VTW_X) situation=2;
+        if (pose_local.pose.position.y > VTW_Y) situation=3;
+        if (pose_local.pose.position.y < -VTW_Y) situation=4;
+        if (pose_local.pose.position.z > VTW_Z) situation=5;
+        if (pose_local.pose.position.z < 0) situation=6;
+        pose_touch.pose.position.x=pose_local.pose.position.x;
+        pose_touch.pose.position.y=pose_local.pose.position.y;
+        pose_touch.pose.position.z=pose_local.pose.position.z;
+        flight_mode = POSE_MODE;
+        controller_pose_x.controllerFirstRun =true;
+        controller_pose_y.controllerFirstRun =true;
+        controller_pose_z.controllerFirstRun =true;
+        controller_pose_yaw.controllerFirstRun =true;
+       }
+       break;
+    }
+      
+    case POSE_MODE:{
+      ROS_INFO_STREAM_THROTTLE(5, "POSE...");
+      double roll_sp, pitch_sp, yaw_sp, throttle_sp;
+      tf::Matrix3x3(transform.getRotation()).getRPY(roll, pitch, yaw);
+      float dx,dy,dz,x_sp,y_sp;
+      dx=pose_touch.pose.position.x-pose_local.pose.position.x;
+      dy=pose_touch.pose.position.y-pose_local.pose.position.y;
+      dz=pose_touch.pose.position.z-pose_local.pose.position.z;
+      x_sp=cos(yaw)*dx-sin(yaw)*dy;
+      y_sp=sin(yaw)*dx+cos(yaw)*dy;
+      
+      controller_pose_x.update(saturate(x_sp,  -2, 2), 0, ros_dt);
+      controller_pose_y.update(saturate(-y_sp, -2, 2), 0, ros_dt);
+      controller_pose_z.update(saturate(dz,  -2, 2), 0, ros_dt);
+      controller_pose_yaw.update(-yaw, 0, ros_dt);
+
+      roll_sp     = saturate(controller_pose_y.output, -0.6, 0.6) + goal_euler.x/EULER2JOY;
+      pitch_sp    = saturate(controller_pose_x.output, -0.6, 0.6) - goal_euler.y/EULER2JOY;
+      yaw_sp      = saturate(controller_pose_yaw.output, -0.6, 0.6) + goal_euler.z/YAWRATE2JOY;
+      throttle_sp = saturate(controller_pose_z.output, -0.6, 0.6) + TAKEOFF_THROTTLE;
+
+      joystick_output = joystick_input;
+      joystick_output.axes[JOY_CHANNEL_PITCH]    = saturate(pitch_sp,   -1, 1);
+      joystick_output.axes[JOY_CHANNEL_ROLL]     = saturate(roll_sp,    -1, 1);
+      joystick_output.axes[JOY_CHANNEL_THROTTLE] = saturate(throttle_sp, 0, 1);
+      joystick_output.axes[JOY_CHANNEL_YAW]      = saturate(yaw_sp,     -1, 1);
+      //control quad to touching_pose
+      if (pose_local.pose.position.z < VTW_Z && pose_local.pose.position.z > 0){
+           if (situation==1){
+               ROS_INFO_STREAM_THROTTLE(5, " situation = 1");
+	       joystick_output.axes[JOY_CHANNEL_PITCH] = saturate(pitch_sp, -1, 0);
+	       if (pose_local.pose.position.x <= pose_touch.pose.position.x) {
+	         flight_mode = MANUAL_FLYING;
+	         controller_pose_x.controllerFirstRun =true;
+                 controller_pose_y.controllerFirstRun =true;
+                 controller_pose_z.controllerFirstRun =true;
+                 controller_pose_yaw.controllerFirstRun =true;
+	         situation = 0;
+	       }
+	     }
+           if (situation==2) {
+               ROS_INFO_STREAM_THROTTLE(5, " situation = 2");
+               joystick_output.axes[JOY_CHANNEL_PITCH] = saturate(pitch_sp, 0, 1);
+               if (pose_local.pose.position.x >= pose_touch.pose.position.x) {
+	         flight_mode = MANUAL_FLYING;
+	         controller_pose_x.controllerFirstRun =true;
+                 controller_pose_y.controllerFirstRun =true;
+                 controller_pose_z.controllerFirstRun =true;
+                 controller_pose_yaw.controllerFirstRun =true;
+	         situation = 0;
+	       }
+             }
+	   if (situation==3){
+	       ROS_INFO_STREAM_THROTTLE(5, " situation = 3");
+	       joystick_output.axes[JOY_CHANNEL_ROLL] = saturate(roll_sp, 0, 1);
+	       if (pose_local.pose.position.y <= pose_touch.pose.position.y) {
+	         flight_mode = MANUAL_FLYING;
+	         controller_pose_x.controllerFirstRun =true;
+                 controller_pose_y.controllerFirstRun =true;
+                 controller_pose_z.controllerFirstRun =true;
+                 controller_pose_yaw.controllerFirstRun =true;
+	         situation = 0;
+	       }
+	     }
+           if (situation==4) {
+               ROS_INFO_STREAM_THROTTLE(5, " situation = 4");
+               joystick_output.axes[JOY_CHANNEL_ROLL] = saturate(roll_sp, -1, 0);
+               if (pose_local.pose.position.y >= pose_touch.pose.position.y) {
+	         flight_mode = MANUAL_FLYING;
+	         controller_pose_x.controllerFirstRun =true;
+                 controller_pose_y.controllerFirstRun =true;
+                 controller_pose_z.controllerFirstRun =true;
+                 controller_pose_yaw.controllerFirstRun =true;
+	         situation = 0;
+	       }
+            }
+        }
+        else {
+          flight_mode = AUTO_LAND;
+          pose_land.pose.position.x=pose_local.pose.position.x;
+          pose_land.pose.position.y=pose_local.pose.position.y;
+          pose_land.pose.position.z=pose_local.pose.position.z;
+          land_height=pose_land.pose.position.z;
+          controller_pose_x.controllerFirstRun =true;
+          controller_pose_y.controllerFirstRun =true;
+          controller_pose_z.controllerFirstRun =true;
+          controller_pose_yaw.controllerFirstRun =true;
+          }
+        break;
+      }
     case AUTO_IDLE:{
       ROS_INFO_STREAM_THROTTLE(5, "IDLE...");
       joystick_output.axes[JOY_CHANNEL_THROTTLE] = 0;
@@ -384,8 +533,7 @@ int main(int argc, char **argv)
 	joystick_output.axes[JOY_CHANNEL_ARM] = 0;
       break;
     }
-    }
-
+}
     // Publish debug data
     debug_data.header.stamp = ros::Time::now();
     debug_data.header.seq = count;

@@ -9,6 +9,7 @@
 #include <tf/transform_listener.h>
 
 #include "geometry_msgs/Twist.h"
+#include "geometry_msgs/Vector3.h"
 #include "geometry_msgs/PoseStamped.h"
 #include "sensor_msgs/Joy.h"
 #include "std_msgs/Int8.h"
@@ -51,9 +52,11 @@ geometry_msgs::Vector3 goal_euler;
 geometry_msgs::Vector3Stamped debug_data;
 sensor_msgs::Joy joystick_input, joystick_output;
 bool JOY_READY = false, CONTROLLER_READY = false, TRANSFORM_READY = false, LOCALFRAME_READY = false, GOAL_EULER_READY = false;
-ros::Time last_vrpn_server_time;
-bool VRPN_UPDATE = false;
-double dynamic_DT = 0;
+
+
+
+geometry_msgs::Vector3 wall;
+
 
 geometry_msgs::PoseStamped frame_transform(geometry_msgs::PoseStamped world, geometry_msgs::PoseStamped origin){
   geometry_msgs::PoseStamped local = world;
@@ -120,10 +123,7 @@ void land_callback(const std_msgs::Int8& message){
 }
 
 void vrpn_pose_callback(const geometry_msgs::PoseStamped& message){
-  VRPN_UPDATE = true;
-  dynamic_DT = message.header.stamp.toSec() - last_vrpn_server_time.toSec();
-  last_vrpn_server_time = message.header.stamp;
-
+  //CONTROLLER_READY = true;
   pose_world = message;
   pose_local = frame_transform(pose_world, origin_world);
 
@@ -201,6 +201,9 @@ int main(int argc, char **argv)
 	
   ros::Rate loop_rate(ros_freq);
   
+
+
+
   ros::Subscriber sub_joy       = n.subscribe("/joy", 1, joystick_callback);
   ros::Subscriber sub_pose       = n.subscribe(DEVICE_NAME, 2, vrpn_pose_callback);
   ros::Subscriber sub_goal       = n.subscribe("goal", 1, goal_callback);
@@ -209,6 +212,8 @@ int main(int argc, char **argv)
   ros::Publisher pub_joy_output = n.advertise<sensor_msgs::Joy>("joy_control", 5);
   ros::Publisher pub_ctrl_error = n.advertise<geometry_msgs::Twist>("error", 5);
   ros::Publisher pub_debug_data = n.advertise<geometry_msgs::Vector3Stamped>("flight_control_debug", 1);
+  
+
 
   nh.param<float>("maxAngle", EULER2JOY, 55.0f);
   //ros::param::get("/flight_controller/maxAngle", EULER2JOY);
@@ -286,8 +291,57 @@ int main(int argc, char **argv)
     // Main logic
     switch(flight_mode){
     case PASS_THROUGH:{
+      
+      //cheng code begin
+      //change to auto flight
+      if(pose_world.pose.position.x>=wall.x||pose_world.pose.position.y>=wall.y||pose_world.pose.position.z>=wall.z)
+     ;{
+      ROS_INFO_STREAM_THROTTLE(5, "FLYING!");
+      // Implementing main controller
+      double roll_sp, pitch_sp, yaw_sp, throttle_sp;
+      tf::Matrix3x3(transform.getRotation()).getRPY(roll, pitch, yaw);
+      controller_pose_x.update(saturate(transform.getOrigin().x(),  -2, 2), 0, ros_dt);
+      controller_pose_y.update(saturate(-transform.getOrigin().y(), -2, 2), 0, ros_dt);
+      controller_pose_z.update(saturate(transform.getOrigin().z(),  -2, 2), 0, ros_dt);
+      controller_pose_yaw.update(saturate(-yaw, -M_PI, M_PI), 0, ros_dt);
+
+      //fix goal 
+      goal_euler.x=pose_world.pose.position.x-0.5;
+      goal_euler.y=pose_world.pose.position.y-0.5;
+      goal_euler.z=pose_world.pose.position.z-0.5;
+
+      roll_sp     = saturate(controller_pose_y.output, -0.6, 0.6) + goal_euler.x/EULER2JOY;
+      pitch_sp    = saturate(controller_pose_x.output, -0.6, 0.6) - goal_euler.y/EULER2JOY - 0.08;
+      yaw_sp      = saturate(controller_pose_yaw.output, -0.6, 0.6) + goal_euler.z/YAWRATE2JOY;
+      throttle_sp = saturate(controller_pose_z.output, -0.6, 0.6) + TAKEOFF_THROTTLE;
+
+      joystick_output = joystick_input;
+      joystick_output.axes[JOY_CHANNEL_PITCH]    = saturate(pitch_sp,   -1, 1);
+      joystick_output.axes[JOY_CHANNEL_ROLL]     = saturate(roll_sp,    -1, 1);
+      joystick_output.axes[JOY_CHANNEL_THROTTLE] = saturate(throttle_sp, 0, 1);
+      joystick_output.axes[JOY_CHANNEL_YAW]      = saturate(yaw_sp,     -1, 1);
+
+      // Swtich to land mode when triggered by the nob
+      if(joystick_input.axes[JOY_CONTROL_LAND] <= JOY_LAND_NOB_THRESHOLD){
+	    flight_mode = AUTO_LAND;
+	// Record the first land height for accurate land timing
+	land_height = pose_local.pose.position.z;
+      }
+
+      // Publish error
+      ctrl_error.linear.x = transform.getOrigin().x();
+      ctrl_error.linear.y = transform.getOrigin().y();
+      ctrl_error.linear.z = transform.getOrigin().z();
+      ctrl_error.angular.z = yaw;
+      pub_ctrl_error.publish(ctrl_error);
+      break;
+    }
+  
+     //cheng code end
+         
       // pass through the joystick command
       joystick_output = joystick_input;
+      
       break;
     }
     case AUTO_TAKEOFF:{
@@ -340,18 +394,13 @@ int main(int argc, char **argv)
       // Implementing main controller
       double roll_sp, pitch_sp, yaw_sp, throttle_sp;
       tf::Matrix3x3(transform.getRotation()).getRPY(roll, pitch, yaw);
-      // Only update the PID controller when there's new VRPN data. This is to eliminate the problem when VRPN is not syncing with local ROS.
-      if(VRPN_UPDATE){
-        controller_pose_x.update(saturate(transform.getOrigin().x(),  -2, 2), 0, dynamic_DT);
-        controller_pose_y.update(saturate(-transform.getOrigin().y(), -2, 2), 0, dynamic_DT);
-        controller_pose_z.update(saturate(transform.getOrigin().z(),  -1.2, 1.2), 0, dynamic_DT);
-        controller_pose_yaw.update(saturate(-yaw, -M_PI, M_PI), 0, dynamic_DT);
-        cout<<controller_pose_y.output<<endl;
-        VRPN_UPDATE = false;
-      }
+      controller_pose_x.update(saturate(transform.getOrigin().x(),  -2, 2), 0, ros_dt);
+      controller_pose_y.update(saturate(-transform.getOrigin().y(), -2, 2), 0, ros_dt);
+      controller_pose_z.update(saturate(transform.getOrigin().z(),  -2, 2), 0, ros_dt);
+      controller_pose_yaw.update(saturate(-yaw, -M_PI, M_PI), 0, ros_dt);
 
       roll_sp     = saturate(controller_pose_y.output, -0.6, 0.6) + goal_euler.x/EULER2JOY;
-      pitch_sp    = saturate(controller_pose_x.output, -0.6, 0.6) - goal_euler.y/EULER2JOY;
+      pitch_sp    = saturate(controller_pose_x.output, -0.6, 0.6) - goal_euler.y/EULER2JOY - 0.08;
       yaw_sp      = saturate(controller_pose_yaw.output, -0.6, 0.6) + goal_euler.z/YAWRATE2JOY;
       throttle_sp = saturate(controller_pose_z.output, -0.6, 0.6) + TAKEOFF_THROTTLE;
 

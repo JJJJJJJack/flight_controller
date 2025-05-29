@@ -27,7 +27,8 @@
 #define JOY_CHANNEL_THROTTLE 3
 #define JOY_CONTROL_LAND 4
 #define JOY_CONTROL_TYPE 5
-
+//////////////////////////////
+#define JOY_CHANNEL_TILT 4
 // Joy stick nob land threshold, Land signal will only be triggered at value lower
 #define JOY_LAND_NOB_THRESHOLD -0.9f
 
@@ -51,9 +52,8 @@ geometry_msgs::Vector3 goal_euler;
 geometry_msgs::Vector3Stamped debug_data;
 sensor_msgs::Joy joystick_input, joystick_output;
 bool JOY_READY = false, CONTROLLER_READY = false, TRANSFORM_READY = false, LOCALFRAME_READY = false, GOAL_EULER_READY = false;
-ros::Time last_vrpn_server_time;
-bool VRPN_UPDATE = false;
-double dynamic_DT = 0;
+bool JOYSTICK_LAND = false;
+float tilt_cmd = 0;
 
 geometry_msgs::PoseStamped frame_transform(geometry_msgs::PoseStamped world, geometry_msgs::PoseStamped origin){
   geometry_msgs::PoseStamped local = world;
@@ -66,6 +66,16 @@ geometry_msgs::PoseStamped frame_transform(geometry_msgs::PoseStamped world, geo
   local.pose.position.z = world.pose.position.z - origin.pose.position.z;
   return local;
 }
+geometry_msgs::Twist keyboard_cmd_vel; // 存储键盘输入的 cmd_vel
+bool KEYBOARD_READY = false; 
+float KEYBOARD_TILT_SCALE = 0.02; // 键盘控制倾斜角系数
+
+void keyboard_callback(const geometry_msgs::Twist::ConstPtr& msg)
+{
+    KEYBOARD_READY = true;
+    keyboard_cmd_vel= *msg;
+    tilt_cmd += keyboard_cmd_vel.linear.x * KEYBOARD_TILT_SCALE;
+}//
 
 void goalEuler_callback(const geometry_msgs::Vector3& message){
   GOAL_EULER_READY = true;
@@ -78,10 +88,16 @@ void joystick_callback(const sensor_msgs::Joy& message){
     joystick_output = message;
   }
   joystick_input = message;
+  if(joystick_input.axes[JOY_CONTROL_LAND] <= JOY_LAND_NOB_THRESHOLD){
+    JOYSTICK_LAND = true;
+  }else{
+    JOYSTICK_LAND = false;
+  }
+  joystick_input.axes[JOY_CONTROL_LAND] = 0;
   if(joystick_input.axes[JOY_CONTROL_TYPE] == 0){
     flight_mode = PASS_THROUGH;
   }else if(flight_mode == PASS_THROUGH)
-    if(TRANSFORM_READY == true && joystick_input.axes[JOY_CONTROL_LAND] > JOY_LAND_NOB_THRESHOLD){
+    if(TRANSFORM_READY == true && message.axes[JOY_CONTROL_LAND] > JOY_LAND_NOB_THRESHOLD){
       // Only set takeoff from pass through when pose feedback is ready.
       flight_mode = AUTO_TAKEOFF;
     }else{
@@ -120,10 +136,7 @@ void land_callback(const std_msgs::Int8& message){
 }
 
 void vrpn_pose_callback(const geometry_msgs::PoseStamped& message){
-  VRPN_UPDATE = true;
-  dynamic_DT = message.header.stamp.toSec() - last_vrpn_server_time.toSec();
-  last_vrpn_server_time = message.header.stamp;
-
+  //CONTROLLER_READY = true;
   pose_world = message;
   pose_local = frame_transform(pose_world, origin_world);
 
@@ -210,6 +223,12 @@ int main(int argc, char **argv)
   ros::Publisher pub_ctrl_error = n.advertise<geometry_msgs::Twist>("error", 5);
   ros::Publisher pub_debug_data = n.advertise<geometry_msgs::Vector3Stamped>("flight_control_debug", 1);
 
+
+
+ //订阅 /cmd_vel 话题
+ ros::Subscriber sub_keyboard = n.subscribe("/turtle1/cmd_vel", 1, keyboard_callback);;
+
+
   nh.param<float>("maxAngle", EULER2JOY, 55.0f);
   //ros::param::get("/flight_controller/maxAngle", EULER2JOY);
   EULER2JOY = EULER2JOY/180.0*M_PI;
@@ -288,6 +307,10 @@ int main(int argc, char **argv)
     case PASS_THROUGH:{
       // pass through the joystick command
       joystick_output = joystick_input;
+      /////////
+      if (KEYBOARD_READY) {
+        joystick_output.axes[JOY_CHANNEL_TILT] = saturate(tilt_cmd, 0, 1);
+      }
       break;
     }
     case AUTO_TAKEOFF:{
@@ -302,7 +325,7 @@ int main(int argc, char **argv)
       // Only allow takeoff when joystick is set on arm
       if(joystick_input.buttons[JOY_CHANNEL_ARM] == 0){
 	ROS_WARN_THROTTLE(1, "Warning: Waiting for arming command from joy...");
-      }else if(joystick_input.axes[JOY_CONTROL_LAND] <= JOY_LAND_NOB_THRESHOLD){
+      }else if(JOYSTICK_LAND){
 	ROS_WARN_THROTTLE(1, "Warning: Landing mode...");
       }else{
 	// Put default arming and flight mode in joystick
@@ -312,6 +335,10 @@ int main(int argc, char **argv)
 	if(joystick_output.axes[JOY_CHANNEL_THROTTLE] < TAKEOFF_THROTTLE)
 	  joystick_output.axes[JOY_CHANNEL_THROTTLE] += ros_dt/TAKEOFF_THROTTLE_TIME*TAKEOFF_THROTTLE;
 	joystick_output.axes[JOY_CHANNEL_PITCH] = joystick_input.axes[JOY_CHANNEL_PITCH];
+ //
+  joystick_output.axes[JOY_CHANNEL_TILT]  = 0;///
+
+  ////////////////////////
 	joystick_output.axes[JOY_CHANNEL_ROLL]  = joystick_input.axes[JOY_CHANNEL_ROLL];
 	joystick_output.axes[JOY_CHANNEL_YAW]   = joystick_input.axes[JOY_CHANNEL_YAW];
 	// If the current local Z is greater than TAKEOFF_HEIGHT, finish takeoff process
@@ -338,17 +365,12 @@ int main(int argc, char **argv)
     case AUTO_FLYING:{
       ROS_INFO_STREAM_THROTTLE(5, "FLYING!");
       // Implementing main controller
-      double roll_sp, pitch_sp, yaw_sp, throttle_sp;
+      double roll_sp, pitch_sp, yaw_sp, throttle_sp,tilt;
       tf::Matrix3x3(transform.getRotation()).getRPY(roll, pitch, yaw);
-      // Only update the PID controller when there's new VRPN data. This is to eliminate the problem when VRPN is not syncing with local ROS.
-      if(VRPN_UPDATE){
-        controller_pose_x.update(saturate(transform.getOrigin().x(),  -2, 2), 0, dynamic_DT);
-        controller_pose_y.update(saturate(-transform.getOrigin().y(), -2, 2), 0, dynamic_DT);
-        controller_pose_z.update(saturate(transform.getOrigin().z(),  -1.2, 1.2), 0, dynamic_DT);
-        controller_pose_yaw.update(saturate(-yaw, -M_PI, M_PI), 0, dynamic_DT);
-        cout<<controller_pose_y.output<<endl;
-        VRPN_UPDATE = false;
-      }
+      controller_pose_x.update(saturate(transform.getOrigin().x(),  -2, 2), 0, ros_dt);
+      controller_pose_y.update(saturate(-transform.getOrigin().y(), -2, 2), 0, ros_dt);
+      controller_pose_z.update(saturate(transform.getOrigin().z(),  -2, 2), 0, ros_dt);
+      controller_pose_yaw.update(saturate(-yaw, -M_PI, M_PI), 0, ros_dt);
 
       roll_sp     = saturate(controller_pose_y.output, -0.6, 0.6) + goal_euler.x/EULER2JOY;
       pitch_sp    = saturate(controller_pose_x.output, -0.6, 0.6) - goal_euler.y/EULER2JOY;
@@ -356,13 +378,19 @@ int main(int argc, char **argv)
       throttle_sp = saturate(controller_pose_z.output, -0.6, 0.6) + TAKEOFF_THROTTLE;
 
       joystick_output = joystick_input;
+      ////////
+      if (KEYBOARD_READY) {
+        joystick_output.axes[JOY_CHANNEL_TILT]  = saturate(tilt_cmd, 0, 1);
+      }  
+     /*joystick_output.axes[JOY_CHANNEL_TILT] =saturate(tilt_cmd,   -1, 1);*/
+      /////////
       joystick_output.axes[JOY_CHANNEL_PITCH]    = saturate(pitch_sp,   -1, 1);
       joystick_output.axes[JOY_CHANNEL_ROLL]     = saturate(roll_sp,    -1, 1);
       joystick_output.axes[JOY_CHANNEL_THROTTLE] = saturate(throttle_sp, 0, 1);
       joystick_output.axes[JOY_CHANNEL_YAW]      = saturate(yaw_sp,     -1, 1);
-
+      // 
       // Swtich to land mode when triggered by the nob
-      if(joystick_input.axes[JOY_CONTROL_LAND] <= JOY_LAND_NOB_THRESHOLD){
+      if(JOYSTICK_LAND){
 	flight_mode = AUTO_LAND;
 	// Record the first land height for accurate land timing
 	land_height = pose_local.pose.position.z;

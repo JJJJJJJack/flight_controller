@@ -1,0 +1,76 @@
+<?xml version="1.0"?>
+<launch>
+  <arg name="joy_dev" default="/dev/input/js1" />
+  <arg name="x_init" default="0" />
+  <arg name="y_init" default="0" />
+  <arg name="z_init" default="1" />
+
+  <!-- PID parameters -->
+  <rosparam file="$(find flight_controller)/config/pid_Quad_minsnap.yaml"/>
+  <arg name="VEHICLE_NAME"           default="jackQuad"/>
+  
+  
+  <!-- Joystick -->
+  <node name="joy" pkg="joy" type="joy_node" output="screen" respawn="true">
+    <param name="dev" value="$(arg joy_dev)" />
+  </node>
+
+  <!-- Controller -->
+  <node name="flight_controller" pkg="flight_controller" type="flycontroller_minsnap" respawn="true" output="screen">
+    <param name="QUAD_NAME"  value="$(arg VEHICLE_NAME)"/>
+    <param name="X_INIT"  value="$(arg x_init)"/>
+    <param name="Y_INIT"  value="$(arg y_init)"/>
+    <param name="Z_INIT"  value="$(arg z_init)"/>
+  </node>
+  
+  <!-- SBUS communication -->
+  <node name="serial_to_sbus" pkg="serial_to_sbus" type="serial_to_sbus" respawn="true" output="screen">
+    <param name="USB" value="/dev/ttyUSB0"/>
+  </node>
+
+  <!--- Trajectory planner -->
+  <node name="planner" pkg="mav_trajectory_generation_example" type="trajectory_generation_waypoints" output="screen">
+      <rosparam command="load" file="$(find mav_trajectory_generation_example)/cfg/firefly_params.yaml"/>
+      <remap from="uav_pose" to="odometry_sensor1/odometry"/>
+  </node>
+
+  <!--- Waypoint publisher -->
+  <!--node name="waypoints_pub" pkg="mav_trajectory_generation_example" type="trajectory_waypoint_publisher" output="screen">
+  </node-->
+  
+  <node pkg="flight_controller" type="uav_kf.py" name="uavKf" output="screen">
+  </node>
+
+  <!-- VRPN -->
+  <arg name="server" default="192.168.3.3"/>
+  <!--arg name="server" default="192.168.1.102"/-->
+  <node pkg="vrpn_client_ros" type="vrpn_client_node" name="vrpn_client_node" output="screen">
+    <rosparam subst_value="true">
+      server: $(arg server)
+      port: 3883
+
+      update_frequency: 100.0
+      frame_id: world
+
+      # Use the VRPN server's time, or the client's ROS time.
+      use_server_time: false
+      broadcast_tf: false
+
+      # Must either specify refresh frequency > 0.0, or a list of trackers to create
+      refresh_tracker_frequency: 100.0
+      #trackers:
+      #- FirstTracker
+      #- SecondTracker
+    </rosparam>
+  </node>
+
+  <!-- Viewer -->
+  <node name="glviewer" pkg="glviewer" type="glviewer" output="screen">
+    <param name="QUAD_NAME" value="$(arg VEHICLE_NAME)"/>
+  </node>
+
+  <!-- Bagging the data  -->
+  <node pkg="rosbag" type="record" name="bag_record" args="-a -o /home/xianghe/LOG_AND_BAG/output.bag"/>
+  <node pkg ="rviz" type="rviz" name="rviz" args="-d $(find flight_controller)/rviz/minsnap_rviz.rviz" required="true" />>
+
+</launch>
