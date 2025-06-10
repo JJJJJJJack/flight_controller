@@ -64,11 +64,6 @@
     </rosparam>
   </node>
 
-  <!-- Viewer -->
-  <node name="glviewer" pkg="glviewer" type="glviewer" output="screen">
-    <param name="QUAD_NAME" value="$(arg VEHICLE_NAME)"/>
-  </node>
-
   <!-- Bagging the data  -->
   <node pkg="rosbag" type="record" name="bag_record" args="-a -o /home/xianghe/LOG_AND_BAG/output.bag"/>
   <node pkg ="rviz" type="rviz" name="rviz" args="-d $(find flight_controller)/rviz/minsnap_rviz.rviz" required="true" />>

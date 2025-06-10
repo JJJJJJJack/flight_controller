@@ -43,6 +43,10 @@
 
 #define gravityG 9.8f
 
+#define MOTOR_P1 4.409f
+#define MOTOR_P2 6.888f
+#define MOTOR_P3 -0.4763f
+
 using namespace std;
 
 typedef enum FLIGHT_MODE
@@ -212,28 +216,18 @@ double getMinSnapYaw(double time_in_trajectory, int poly_order, int coeff_segmen
   return minsnap_yaw;
 }
 
-Eigen::Matrix3d getR_N_W(double time_in_trajectory, int poly_order, int coeff_segment_base)
+Eigen::Matrix3d getNearestRotationMatrix(Eigen::Vector3d z_N_W, double yaw)
 {
-  double minsnap_yaw = getMinSnapYaw(time_in_trajectory, poly_order, coeff_segment_base);
-  Eigen::Vector3d minsnap_acc;
-  minsnap_acc = getMinSnapAcc(time_in_trajectory, poly_order, coeff_segment_base);
-  // calculate frame N from acceration
-  Eigen::Vector3d acc_W, z_N_W, x_Y_W, y_N_W, x_N_W, Theta_N;
-  acc_W = -minsnap_acc;
-  acc_W(2) += 9.8;
-  z_N_W = acc_W/acc_W.norm();
-  x_Y_W << cos(minsnap_yaw), sin(minsnap_yaw), 0;
+  Eigen::Matrix3d R_N_W;
+  Eigen::Vector3d x_Y_W, y_N_W, x_N_W;
+  x_Y_W << cos(yaw), sin(yaw), 0;
   y_N_W = z_N_W.cross(x_Y_W);
   y_N_W.normalize();
   x_N_W = y_N_W.cross(z_N_W);
-  Eigen::Matrix3d R_N_W;
   x_N_W.normalize();
-  y_N_W.normalize();
-  z_N_W.normalize();
   R_N_W.col(0) = x_N_W;
   R_N_W.col(1) = y_N_W;
   R_N_W.col(2) = z_N_W;
-  // Get the other rotation matrix
   Eigen::Matrix3d R_N_W_neg;
   y_N_W *= -1;
   x_N_W = y_N_W.cross(z_N_W);
@@ -260,6 +254,20 @@ Eigen::Matrix3d getR_N_W(double time_in_trajectory, int poly_order, int coeff_se
   }
 }
 
+Eigen::Matrix3d getR_N_W(double time_in_trajectory, int poly_order, int coeff_segment_base)
+{
+  double minsnap_yaw = getMinSnapYaw(time_in_trajectory, poly_order, coeff_segment_base);
+  Eigen::Vector3d minsnap_acc;
+  minsnap_acc = getMinSnapAcc(time_in_trajectory, poly_order, coeff_segment_base);
+  // calculate frame N from acceration
+  Eigen::Vector3d acc_W, z_N_W, x_Y_W, y_N_W, x_N_W, Theta_N;
+  acc_W = -minsnap_acc;
+  acc_W(2) += 9.8;
+  z_N_W = acc_W/acc_W.norm();
+  Eigen::Matrix3d R_N_W = getNearestRotationMatrix(z_N_W, minsnap_yaw);
+  return R_N_W;
+}
+
 Eigen::Quaterniond getMinSnapQuat(double time_in_trajectory, int poly_order, int coeff_segment_base)
 {
   double minsnap_yaw = getMinSnapYaw(time_in_trajectory, poly_order, coeff_segment_base);
@@ -270,24 +278,14 @@ Eigen::Quaterniond getMinSnapQuat(double time_in_trajectory, int poly_order, int
   acc_W = -minsnap_acc;
   acc_W(2) += 9.8;
   z_N_W = acc_W/acc_W.norm();
-  x_Y_W << cos(minsnap_yaw), sin(minsnap_yaw), 0;
-  y_N_W = z_N_W.cross(x_Y_W);
-  y_N_W.normalize();
-  x_N_W = y_N_W.cross(z_N_W);
-  Eigen::Matrix3d R_N_W;
-  x_N_W.normalize();
-  y_N_W.normalize();
-  z_N_W.normalize();
-  R_N_W.col(0) = x_N_W;
-  R_N_W.col(1) = y_N_W;
-  R_N_W.col(2) = z_N_W;
+  Eigen::Matrix3d R_N_W = getNearestRotationMatrix(z_N_W, minsnap_yaw);
   Eigen::Quaterniond Quat_NWU(R_N_W);
   Eigen::AngleAxisd AA_NWU(Quat_NWU);
   Eigen::Vector3d NED_Axis = AA_NWU.axis();
   NED_Axis(1) = -NED_Axis(1);
   NED_Axis(2) = -NED_Axis(2);
   Eigen::AngleAxisd AA_NED(AA_NWU.angle(), NED_Axis);
-  Eigen::Quaterniond Quat_NED(AA_NED);
+  Eigen::Quaterniond Quat_NED(R_N_W);
   return Quat_NED;
 }
 
@@ -321,6 +319,28 @@ Eigen::Vector3d getOmega_N(double time_in_trajectory, int poly_order, int coeff_
     return omega_N;
 }
 
+Eigen::Quaterniond QuatNEDtoQuatNWU(Eigen::Quaterniond Quat_NED)
+{
+  Eigen::AngleAxisd AA_NED(Quat_NED);
+  Eigen::Vector3d NED_Axis = AA_NED.axis();
+  NED_Axis(1) = -NED_Axis(1);
+  NED_Axis(2) = -NED_Axis(2);
+  Eigen::AngleAxisd AA_NWU(AA_NED.angle(), NED_Axis);
+  Eigen::Quaterniond Quat_NWU(AA_NWU);
+  return Quat_NWU;
+}
+
+Eigen::Quaterniond QuatNWUtoQuatNED(Eigen::Quaterniond Quat_NWU)
+{
+  Eigen::AngleAxisd AA_NWU(Quat_NWU);
+  Eigen::Vector3d NWU_Axis = AA_NWU.axis();
+  NWU_Axis(1) = -NWU_Axis(1);
+  NWU_Axis(2) = -NWU_Axis(2);
+  Eigen::AngleAxisd AA_NED(AA_NWU.angle(), NWU_Axis);
+  Eigen::Quaterniond Quat_NED(AA_NED);
+  return Quat_NED;
+}
+
 /*********   Utility functions   ***********/
 float saturate(float input, float min, float max){
   if(input < min)
@@ -330,7 +350,15 @@ float saturate(float input, float min, float max){
   return input;
 }
 
-  void vrpn_pose_callback(const geometry_msgs::PoseStamped& message){
+float motorCmdFromThrottle(float throttle){
+  // Throttle = p1 * motorCmd^2 + p2 * motorCmd + p3
+  float motorCmd = 0;
+  motorCmd = (-MOTOR_P2 + sqrt(MOTOR_P2*MOTOR_P2 - 4*MOTOR_P1*(MOTOR_P3 - throttle)))/(MOTOR_P1*2);
+  return motorCmd;
+}
+
+/*********   Callback functions   ***********/
+void vrpn_pose_callback(const geometry_msgs::PoseStamped& message){
   //CONTROLLER_READY = true;
   pose_world = message;
   pose_local = pose_world;
@@ -560,8 +588,7 @@ int main(int argc, char **argv)
         TRANSFORM_READY = false;
       }
     }
-
-        
+ 
     // Main logic
     switch(flight_mode){
       case PASS_THROUGH:{
@@ -589,8 +616,9 @@ int main(int argc, char **argv)
           joystick_output.buttons[JOY_CHANNEL_ARM] = 1;
           joystick_output.buttons[JOY_CHANNEL_FLIGHT_MODE] = 1;
           // Take off (gradually increase throttle to predefiend throttle command)
-          if(joystick_output.axes[JOY_CHANNEL_THROTTLE] < TAKEOFF_THROTTLE)
+          if(joystick_output.axes[JOY_CHANNEL_THROTTLE] < TAKEOFF_THROTTLE){
             joystick_output.axes[JOY_CHANNEL_THROTTLE] += ros_dt/TAKEOFF_THROTTLE_TIME*TAKEOFF_THROTTLE;
+          }
           joystick_output.axes[JOY_CHANNEL_PITCH] = joystick_input.axes[JOY_CHANNEL_PITCH];
           joystick_output.axes[JOY_CHANNEL_ROLL]  = joystick_input.axes[JOY_CHANNEL_ROLL];
           joystick_output.axes[JOY_CHANNEL_YAW]   = joystick_input.axes[JOY_CHANNEL_YAW];
@@ -657,10 +685,12 @@ int main(int argc, char **argv)
               pose.pose.position.x = getMinSnapPose(time_in_trajectory, poly_order, i).x();
               pose.pose.position.y = -getMinSnapPose(time_in_trajectory, poly_order, i).y();
               pose.pose.position.z = -getMinSnapPose(time_in_trajectory, poly_order, i).z();
-              pose.pose.orientation.x = getMinSnapQuat(time_in_trajectory, poly_order, i).x();
-              pose.pose.orientation.y = getMinSnapQuat(time_in_trajectory, poly_order, i).y();
-              pose.pose.orientation.z = getMinSnapQuat(time_in_trajectory, poly_order, i).z();
-              pose.pose.orientation.w = getMinSnapQuat(time_in_trajectory, poly_order, i).w();
+              Eigen::Quaterniond minsnap_quat_NED = getMinSnapQuat(time_in_trajectory, poly_order, i);
+              Eigen::Quaterniond minsnap_quat_NWU = QuatNEDtoQuatNWU(minsnap_quat_NED);
+              pose.pose.orientation.x = minsnap_quat_NWU.x();
+              pose.pose.orientation.y = minsnap_quat_NWU.y();
+              pose.pose.orientation.z = minsnap_quat_NWU.z();
+              pose.pose.orientation.w = minsnap_quat_NWU.w();
               path.poses.push_back(pose);
               ROS_INFO("Segment %d, time %f, pose %f %f %f, quat %f %f %f %f", i, time_in_trajectory, pose.pose.position.x, pose.pose.position.y, pose.pose.position.z, pose.pose.orientation.x, pose.pose.orientation.y, pose.pose.orientation.z, pose.pose.orientation.w);
             }
@@ -739,10 +769,11 @@ int main(int argc, char **argv)
           pubGoalPose.pose.position.x = minsnap_pose(0);
           pubGoalPose.pose.position.y = -minsnap_pose(1);
           pubGoalPose.pose.position.z = -minsnap_pose(2);
-          pubGoalPose.pose.orientation.x = minsnap_quat.x();
-          pubGoalPose.pose.orientation.y = minsnap_quat.y();
-          pubGoalPose.pose.orientation.z = minsnap_quat.z();
-          pubGoalPose.pose.orientation.w = minsnap_quat.w();
+          Eigen::Quaterniond minsnap_quat_NWU = QuatNEDtoQuatNWU(minsnap_quat);
+          pubGoalPose.pose.orientation.x = minsnap_quat_NWU.x();
+          pubGoalPose.pose.orientation.y = minsnap_quat_NWU.y();
+          pubGoalPose.pose.orientation.z = minsnap_quat_NWU.z();
+          pubGoalPose.pose.orientation.w = minsnap_quat_NWU.w();
           pub_minsnap_goal_pose.publish(pubGoalPose);
         }else{
           // If poly finished, fix goal_pose, set others to 0
@@ -752,7 +783,6 @@ int main(int argc, char **argv)
           minsnap_rate << 0,0,0;
           minsnap_yaw_rate = 0;
         }
-        
 
         // Position controller
         // Get position error in world frame
@@ -791,37 +821,9 @@ int main(int argc, char **argv)
         // cout<<T_des<<endl<<endl;
         // Calculate quaternion and force to compensate position error
         Eigen::Vector3d Z_B_des = F_des/F_des.norm();
-        Eigen::Vector3d X_C_des(cos(minsnap_yaw), sin(minsnap_yaw), 0);
         //cout<<"Minsnap Yaw"<<X_C_des<<endl<<endl;;
-        Eigen::Vector3d Y_B_des = Z_B_des.cross(X_C_des);
-        Y_B_des.normalize();
-        Eigen::Vector3d X_B_des = Y_B_des.cross(Z_B_des);
-        X_B_des.normalize();
-        Eigen::Matrix3d R_des;
-        R_des.col(0) = X_B_des;
-        R_des.col(1) = Y_B_des;
-        R_des.col(2) = Z_B_des;
-        Y_B_des = -Y_B_des;
-        X_B_des = Y_B_des.cross(Z_B_des);
-        X_B_des.normalize();
-        Y_B_des.normalize();
-        Z_B_des.normalize();
-        Eigen::Matrix3d R_des_neg;
-        R_des_neg.col(0) = X_B_des;
-        R_des_neg.col(1) = Y_B_des;
-        R_des_neg.col(2) = Z_B_des;
-        Eigen::Quaterniond Quat_des(R_des);
-        Eigen::Quaterniond Quat_des_neg(R_des_neg);
-        Eigen::AngleAxisd angleAxisError(Quat_des * Quat_Feedback_NED.conjugate());
-        double angleError = fabs(angleAxisError.angle());
-        Eigen::AngleAxisd angleAxisErrorNeg(Quat_des_neg * Quat_Feedback_NED.conjugate());
-        double angleErrorNeg = fabs(angleAxisErrorNeg.angle());
-        Eigen::Quaterniond Quat_Contr;
-        if(angleError < angleErrorNeg){
-          Quat_Contr = Quat_des;
-        }else{
-          Quat_Contr = Quat_des_neg;
-        }
+        Eigen::Matrix3d R_des = getNearestRotationMatrix(Z_B_des, minsnap_yaw);
+        Eigen::Quaterniond Quat_Contr(R_des);
 
         // 转换为旋转矩阵
         Eigen::Matrix3d rot_matrix = Quat_Contr.toRotationMatrix();
@@ -859,6 +861,7 @@ int main(int argc, char **argv)
         // Output_force = K * Throttle_command^2
         // Throttle_command = sqrt(T_des/K)
         float throttle_K = VEHICLE_WEIGHT * 9.8f / pow(TAKEOFF_THROTTLE, 2);
+        float motorCmd = motorCmdFromThrottle(T_des/4.0f);
         cmd_thrust.data = sqrt(T_des/throttle_K);
         if(!isnan(T_des))
           pub_control_thrust.publish(cmd_thrust);

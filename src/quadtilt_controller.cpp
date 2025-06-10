@@ -301,7 +301,7 @@ int main(int argc, char **argv)
 	TRANSFORM_READY = false;
       }
     }
-        
+    
     // Main logic
     switch(flight_mode){
     case PASS_THROUGH:{
