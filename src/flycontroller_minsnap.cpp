@@ -361,6 +361,7 @@ float motorCmdFromThrottle(float throttle){
 void vrpn_pose_callback(const geometry_msgs::PoseStamped& message){
   //CONTROLLER_READY = true;
   pose_world = message;
+  pose_world.pose.position.x -= 16.0f;
   pose_local = pose_world;
 
   static tf::TransformBroadcaster br;
@@ -838,8 +839,8 @@ int main(int argc, char **argv)
         // Calculate ang axis as cont_rate
         double rate_Angle = 2.0 * acos(Quat_error.w());
         Eigen::Vector3d rate_Axis = (rate_Angle > 1e-6) ? Quat_error.vec().normalized() : Eigen::Vector3d::UnitX();
-        //cout<< rate_Angle<<endl;
-        //cout<<rate_Axis<<endl;
+        // cout<< rate_Angle<<endl;
+        // cout<<rate_Axis<<endl;
         // Attitude controller
         // Eigen::Vector3d omega_Contr = KP_att * rate_Angle * rate_Axis;
         Eigen::Vector3d omega_Contr = KP_att * R_N_W_BODY.inverse() * AA_error.angle() * AA_error.axis();
@@ -876,7 +877,7 @@ int main(int argc, char **argv)
         joystick_output.axes[JOY_CHANNEL_ROLL]     = saturate(roll_sp,    -1, 1);
         joystick_output.axes[JOY_CHANNEL_PITCH]    = saturate(pitch_sp,   -1, 1);
         joystick_output.axes[JOY_CHANNEL_YAW]      = saturate(yaw_sp,     -1, 1);
-        joystick_output.axes[JOY_CHANNEL_THROTTLE] = saturate(throttle_sp, 0, 1); 
+        joystick_output.axes[JOY_CHANNEL_THROTTLE] = saturate(throttle_sp, 0.05, 1); 
         
         // Swtich to land mode when triggered by the nob
         if(joystick_input.axes[JOY_CONTROL_LAND] <= JOY_LAND_NOB_THRESHOLD){

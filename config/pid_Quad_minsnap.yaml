@@ -1,17 +1,17 @@
 controller: {
-    KP_x: 1.8,
+    KP_x: 2.2,
     KI_x: 0.1,
-    KD_x: 1.5,
+    KD_x: 2.0,
     X_limit: 0.5,
     
-    KP_y: 1.5,
+    KP_y: 2.2,
     KI_y: 0.1,
-    KD_y: 1.2,
+    KD_y: 2.0,
     Y_limit: 0.5,
     
-    KP_z: 3,
+    KP_z: 4,
     KI_z: 0.2,
-    KD_z: 3,
+    KD_z: 4,
     Z_limit: 0.5,
     
     KP_yaw: 0.1,
@@ -34,13 +34,13 @@ controller: {
     VZ_limit: 0,
     
     TAKEOFF_HEIGHT: 0.025,
-    TAKEOFF_THROTTLE: 0.256,
+    TAKEOFF_THROTTLE: 0.232,
     TAKEOFF_THROTTLE_TIME: 0.6,
     LAND_TIME: 5.0,
     
     Yaw: 0,
     Flip: 100,
-    KP_att: 3.2,
+    KP_att: 4.0,
     
-    VEHICLE_WEIGHT: 0.48,
+    VEHICLE_WEIGHT: 1.1800,
 }

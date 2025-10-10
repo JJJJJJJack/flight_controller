@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
 <launch>
-  <arg name="joy_dev" default="/dev/input/js1" />
+  <arg name="joy_dev" default="/dev/ttyUSB0" />
   <arg name="x_init" default="0" />
   <arg name="y_init" default="0" />
   <arg name="z_init" default="1" />
@@ -11,8 +11,8 @@
   
   
   <!-- Joystick -->
-  <node name="joy" pkg="joy" type="joy_node" output="screen" respawn="true">
-    <param name="dev" value="$(arg joy_dev)" />
+  <node name="sbus_to_serial" pkg="serial_to_sbus" type="sbus_to_serial" output="screen" respawn="true">
+    <param name="USB" value="$(arg joy_dev)" />
   </node>
 
   <!-- Controller -->
@@ -24,9 +24,9 @@
   </node>
   
   <!-- SBUS communication -->
-  <!--node name="serial_to_sbus" pkg="serial_to_sbus" type="serial_to_sbus" respawn="true" output="screen">
-    <param name="USB" value="/dev/ttyUSB0"/>
-  </node-->
+  <node name="serial_to_sbus" pkg="serial_to_sbus" type="serial_to_sbus" respawn="true" output="screen">
+    <param name="USB" value="/dev/ttyUSB1"/>
+  </node>
 
   <!--- Trajectory planner -->
   <node name="planner" pkg="mav_trajectory_generation_example" type="trajectory_generation_waypoints" output="screen">
@@ -42,7 +42,7 @@
   </node>
 
   <!-- VRPN -->
-  <arg name="server" default="192.168.3.3"/>
+  <arg name="server" default="192.168.31.63"/>
   <!--arg name="server" default="192.168.1.102"/-->
   <node pkg="vrpn_client_ros" type="vrpn_client_node" name="vrpn_client_node" output="screen">
     <rosparam subst_value="true">
@@ -65,7 +65,7 @@
   </node>
 
   <!-- Bagging the data  -->
-  <node pkg="rosbag" type="record" name="bag_record" args="-a -o /home/xianghe/LOG_AND_BAG/output.bag"/>
-  <node pkg ="rviz" type="rviz" name="rviz" args="-d $(find flight_controller)/rviz/minsnap_rviz.rviz" required="true" />>
+  <!--node pkg="rosbag" type="record" name="bag_record" args="-a -o /home/cat/LOG_AND_BAG/output.bag"/-->
+  <!--node pkg ="rviz" type="rviz" name="rviz" args="-d $(find flight_controller)/rviz/minsnap_rviz.rviz" required="true" />-->
 
 </launch>
