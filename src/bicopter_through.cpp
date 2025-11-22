@@ -708,6 +708,7 @@ int main(int argc, char **argv) {
                     desired_point_ned.vx = 0;
                     desired_point_ned.vz = 0;
                     desired_point_ned.theta = 0;
+                    desired_point_ned.omega = 0;
                 } else {
                     current_trajectory_time = ROS_TIME - trajectory_start_time;
                     desired_point_ned = getCSVTrajectoryPoint(current_trajectory_time);
@@ -742,6 +743,7 @@ int main(int argc, char **argv) {
                 minsnap_vel << desired_point_ned.vx, 0, desired_point_ned.vz;
                 minsnap_acc << ax_desired, 0, az_desired; 
                 minsnap_yaw = 0;  
+                minsnap_rate << 0, desired_point_ned.omega, 0;
                 
                 // 发布调试信息
                 geometry_msgs::Vector3Stamped pubMinPose;
@@ -858,15 +860,15 @@ int main(int argc, char **argv) {
                 double pitch_sp = -omega_Des(1) * 57.3 / 2000.0f;
                 double yaw_sp = omega_Des(2) * 57.3 / 2000.0f;
                 double throttle_sp = cmd_thrust.data;
-                
+                // 摇杆量为期望角度
                 joystick_output.axes[JOY_CHANNEL_ROLL] = saturate(roll_sp, -1, 1);
                 joystick_output.axes[JOY_CHANNEL_PITCH] = saturate(pitch_sp, -1, 1);
                 joystick_output.axes[JOY_CHANNEL_YAW] = saturate(yaw_sp, -1, 1);
                 joystick_output.axes[JOY_CHANNEL_THROTTLE] = saturate(throttle_sp, 0, 1);
-                // AUX1 AUX2 AUX3 为期望角度在机体系下的投影
-                joystick_output.axes[JOY_CHANNEL_AUX1] = saturate(roll_sp, -1, 1);
-                joystick_output.axes[JOY_CHANNEL_AUX2] = saturate(pitch_sp, -1, 1);
-                joystick_output.axes[JOY_CHANNEL_AUX3] = saturate(yaw_sp, -1, 1);
+                // AUX1 AUX2 AUX3 为前馈的期望角速度
+                joystick_output.axes[JOY_CHANNEL_AUX1] = saturate(minsnap_rate(0), -1, 1);
+                joystick_output.axes[JOY_CHANNEL_AUX2] = saturate(minsnap_rate(1), -1, 1);
+                joystick_output.axes[JOY_CHANNEL_AUX3] = saturate(minsnap_rate(2), -1, 1);
                 break;
             }
             
