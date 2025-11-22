@@ -43,6 +43,11 @@ typedef enum FLIGHT_MODE
    AUTO_IDLE,
   } FLIGHT_MODE;
 
+
+tfScalar debughuz = 0;//1118
+
+
+
 FLIGHT_MODE flight_mode = PASS_THROUGH, flight_mode_previous = PASS_THROUGH;
 geometry_msgs::Twist cmd_vel, ctrl_error;
 string QUAD_NAME;
@@ -69,12 +74,25 @@ geometry_msgs::PoseStamped frame_transform(geometry_msgs::PoseStamped world, geo
 geometry_msgs::Twist keyboard_cmd_vel; // 存储键盘输入的 cmd_vel
 bool KEYBOARD_READY = false; 
 float KEYBOARD_TILT_SCALE = 0.02; // 键盘控制倾斜角系数
+int keyboard_count = 0;
+const int SCALE_CHANGE_THRESHOLD = 15;
+const float KEYBOARD_TILT_SCALE_REDUCED = 0.01;
 
 void keyboard_callback(const geometry_msgs::Twist::ConstPtr& msg)
 {
     KEYBOARD_READY = true;
     keyboard_cmd_vel= *msg;
-    tilt_cmd += keyboard_cmd_vel.linear.x * KEYBOARD_TILT_SCALE;
+
+if (fabs(keyboard_cmd_vel.linear.x) > 0.01) { // 有效输入才计数
+      keyboard_count++;
+      
+      if (keyboard_count >= SCALE_CHANGE_THRESHOLD) {
+          KEYBOARD_TILT_SCALE = KEYBOARD_TILT_SCALE_REDUCED;
+      }
+    
+      tilt_cmd += keyboard_cmd_vel.linear.x * KEYBOARD_TILT_SCALE;}
+    
+    
 }//
 
 void goalEuler_callback(const geometry_msgs::Vector3& message){
@@ -115,14 +133,26 @@ void goal_callback(const geometry_msgs::PoseStamped& message){
   tf::Transform transform;
   transform.setOrigin(tf::Vector3(goal_local.pose.position.x,
 				  -goal_local.pose.position.y,
-				  goal_local.pose.position.z));
+          goal_local.pose.position.z));
+				  // goal_local.pose.position.z));//1105
   tf::Quaternion q(message.pose.orientation.x,
 		   message.pose.orientation.y,
 		   message.pose.orientation.z,
 		   message.pose.orientation.w);
   tfScalar yaw_goal, pitch_goal, roll_goal;
   tf::Matrix3x3 mat_goal(q);
-  mat_goal.getEulerYPR(yaw_goal, pitch_goal, roll_goal);
+  //mat_goal.getEulerYPR(yaw_goal, pitch_goal, roll_goal);
+
+        double r_goal00, r_goal01, r_goal02;
+        double r_goal10, r_goal11, r_goal12;
+        double r_goal20, r_goal21, r_goal22;
+
+        r_goal00 = mat_goal[0][0]; r_goal01=mat_goal[0][1];r_goal02=mat_goal[0][2];
+        r_goal10 = mat_goal[1][0]; r_goal11=mat_goal[1][1];r_goal12=mat_goal[1][2];
+        r_goal20 = mat_goal[2][0]; r_goal11=mat_goal[2][1];r_goal22=mat_goal[2][2]; 
+          yaw_goal = atan2(-r_goal01, r_goal11);  // Z 轴旋转
+          roll_goal = asin(r_goal21);        // X 轴旋转
+          pitch_goal= atan2(-r_goal20, r_goal22); // Y 轴
   tf::Quaternion q_goal;
   q_goal.setRPY(0, 0, -yaw_goal);
   transform.setRotation(q_goal);
@@ -151,7 +181,18 @@ void vrpn_pose_callback(const geometry_msgs::PoseStamped& message){
 		   message.pose.orientation.w);
   tfScalar yaw, pitch, roll;
   tf::Matrix3x3 mat(q0);
-  mat.getEulerYPR(yaw, pitch, roll);
+  //mat.getEulerYPR(yaw, pitch, roll);
+       double rw00, rw01, rw02;
+        double rw10, rw11, rw12;
+        double rw20, rw21, rw22;  
+        rw00 = mat[0][0]; rw01 = mat[0][1]; rw02 = mat[0][2];
+        rw10 = mat[1][0]; rw11 = mat[1][1]; rw12 = mat[1][2];
+        rw20 = mat[2][0]; rw21 = mat[2][1]; rw22 = mat[2][2]; 
+          
+          yaw = atan2(-rw01, rw11);  // Z 轴旋转
+          roll = asin(rw21);        // X 轴旋转
+          pitch = atan2(-rw20, rw22); // Y 轴旋转
+  //ROS_INFO_THROTTLE(1.0, "Yaw: %.4f rad (%.2f deg)", yaw, yaw * 180.0 / M_PI);//1118
   tf::Quaternion q;
   q.setRPY(0, 0, yaw);
   transform.setRotation(q);
@@ -167,7 +208,18 @@ void vrpn_pose_callback(const geometry_msgs::PoseStamped& message){
 		      origin_world.pose.orientation.w);
     tfScalar yaw_origin, pitch_origin, roll_origin;
     tf::Matrix3x3 mat_origin(q1);
-    mat.getEulerYPR(yaw_origin, pitch_origin, roll_origin);
+   // mat.getEulerYPR(yaw_origin, pitch_origin, roll_origin);
+        double r_origin00, r_origin01, r_origin02;
+        double r_origin10, r_origin11, r_origin12;
+        double r_origin20, r_origin21, r_origin22;
+
+        r_origin00 = mat_origin[0][0]; r_origin01 = mat_origin[0][1]; r_origin02 = mat_origin[0][2];
+        r_origin10 = mat_origin[1][0]; r_origin11 = mat_origin[1][1]; r_origin12 = mat_origin[1][2];
+        r_origin20 = mat_origin[2][0]; r_origin21 = mat_origin[2][1]; r_origin22 = mat_origin[2][2];
+          
+        yaw_origin = atan2(-r_origin01, r_origin11);  // Z 轴旋转
+        roll_origin = asin(r_origin21);        // X 轴旋转
+        pitch_origin = atan2(-r_origin20, r_origin22); // Y 轴旋转//1116
     tf::Quaternion q_origin;
     q_origin.setRPY(0, 0, yaw_origin);
     transform_origin.setRotation(q_origin);
@@ -198,7 +250,7 @@ int main(int argc, char **argv)
   ros::init(argc, argv, "bicopter_optitrack_controller");
   ros::NodeHandle n;
   ros::NodeHandle nh("~");
-  nh.param<std::string>("QUAD_NAME", QUAD_NAME, "jackQuad");
+  nh.param<std::string>("QUAD_NAME", QUAD_NAME, "quadTilt");
   char DEVICE_NAME[100];
   strcpy(DEVICE_NAME, "/vrpn_client_node/");
   strcat(DEVICE_NAME, QUAD_NAME.c_str());
@@ -337,7 +389,6 @@ int main(int argc, char **argv)
 	joystick_output.axes[JOY_CHANNEL_PITCH] = joystick_input.axes[JOY_CHANNEL_PITCH];
  //
   joystick_output.axes[JOY_CHANNEL_TILT]  = 0;///
-
   ////////////////////////
 	joystick_output.axes[JOY_CHANNEL_ROLL]  = joystick_input.axes[JOY_CHANNEL_ROLL];
 	joystick_output.axes[JOY_CHANNEL_YAW]   = joystick_input.axes[JOY_CHANNEL_YAW];
@@ -366,16 +417,36 @@ int main(int argc, char **argv)
       ROS_INFO_STREAM_THROTTLE(5, "FLYING!");
       // Implementing main controller
       double roll_sp, pitch_sp, yaw_sp, throttle_sp,tilt;
-      tf::Matrix3x3(transform.getRotation()).getRPY(roll, pitch, yaw);
-      controller_pose_x.update(saturate(transform.getOrigin().x(),  -2, 2), 0, ros_dt);
-      controller_pose_y.update(saturate(-transform.getOrigin().y(), -2, 2), 0, ros_dt);
-      controller_pose_z.update(saturate(transform.getOrigin().z(),  -2, 2), 0, ros_dt);
-      controller_pose_yaw.update(saturate(-yaw, -M_PI, M_PI), 0, ros_dt);
+      // tf::Matrix3x3(transform.getRotation()).getRPY(roll, pitch, yaw);
+       tf::Matrix3x3 mat1(transform.getRotation());
+        double r00, r01, r02;
+        double r10, r11, r12;
+        double r20, r21, r22;
+        r00 = mat1[0][0]; r01 = mat1[0][1]; r02 = mat1[0][2];
+        r10 = mat1[1][0]; r11 = mat1[1][1]; r12 = mat1[1][2];
+        r20 = mat1[2][0]; r21 = mat1[2][1]; r22 = mat1[2][2];
 
-      roll_sp     = saturate(controller_pose_y.output, -0.6, 0.6) + goal_euler.x/EULER2JOY;
-      pitch_sp    = saturate(controller_pose_x.output, -0.6, 0.6) - goal_euler.y/EULER2JOY;
-      yaw_sp      = saturate(controller_pose_yaw.output, -0.6, 0.6) + goal_euler.z/YAWRATE2JOY;
-      throttle_sp = saturate(controller_pose_z.output, -0.6, 0.6) + TAKEOFF_THROTTLE;
+          // 按 ZXY 顺序计算欧拉角
+          yaw = atan2(-r01, r11);  // Z 轴旋转
+          roll = asin(r21);        // X 轴旋转
+          pitch = atan2(-r20, r22); // Y 轴旋转
+     //  ROS_INFO_THROTTLE(0.5, "Flying Yaw: %.3f rad (%.1f deg)", yaw, yaw * 180.0 / M_PI);//1118
+          controller_pose_x.update(saturate(transform.getOrigin().x(),  -2, 2), 0, ros_dt);
+          controller_pose_y.update(saturate(-transform.getOrigin().y(), -2, 2), 0, ros_dt);
+          controller_pose_z.update(saturate(transform.getOrigin().z(),  -2, 2), 0, ros_dt);
+          controller_pose_yaw.update(saturate(-yaw, -M_PI, M_PI), 0, ros_dt);
+     
+          roll_sp     = saturate(controller_pose_y.output, -0.6, 0.6) + goal_euler.x/EULER2JOY;
+          pitch_sp    = saturate(controller_pose_x.output, -0.6, 0.6) - goal_euler.y/EULER2JOY;
+          yaw_sp      = saturate(controller_pose_yaw.output, -0.6, 0.6) + goal_euler.z/YAWRATE2JOY;
+          throttle_sp = saturate(controller_pose_z.output, -0.6, 0.6) + TAKEOFF_THROTTLE;
+
+          debughuz=yaw_sp;//1118
+      // roll_sp     = saturate(controller_pose_y.output, -0.6, 0.6);
+      // pitch_sp    = saturate(controller_pose_x.output, -0.6, 0.6) ;
+      // yaw_sp      = saturate(controller_pose_yaw.output, -0.6, 0.6) ;
+      // throttle_sp = saturate(controller_pose_z.output, -0.6, 0.6) + TAKEOFF_THROTTLE;
+
 
       joystick_output = joystick_input;
       ////////
@@ -383,11 +454,19 @@ int main(int argc, char **argv)
         joystick_output.axes[JOY_CHANNEL_TILT]  = saturate(tilt_cmd, 0, 1);
       }  
      /*joystick_output.axes[JOY_CHANNEL_TILT] =saturate(tilt_cmd,   -1, 1);*/
+
+
+
+      // float tilt_angle=tilt_cmd*M_PI/4;
+      // float tilt_compensation=sin(tilt_angle)*0.5;
+      // throttle_sp=saturate(controller_pose_z.output+tilt_compensation, -0.8, 0.8) + TAKEOFF_THROTTLE;
+        throttle_sp=saturate(controller_pose_z.output, -0.8, 0.8) + TAKEOFF_THROTTLE;
       /////////
       joystick_output.axes[JOY_CHANNEL_PITCH]    = saturate(pitch_sp,   -1, 1);
       joystick_output.axes[JOY_CHANNEL_ROLL]     = saturate(roll_sp,    -1, 1);
-      joystick_output.axes[JOY_CHANNEL_THROTTLE] = saturate(throttle_sp, 0, 1);
+      joystick_output.axes[JOY_CHANNEL_THROTTLE] = saturate(throttle_sp, 0, 0.8);
       joystick_output.axes[JOY_CHANNEL_YAW]      = saturate(yaw_sp,     -1, 1);
+      //joystick_output.axes[JOY_CHANNEL_YAW]   = joystick_input.axes[JOY_CHANNEL_YAW];
       // 
       // Swtich to land mode when triggered by the nob
       if(JOYSTICK_LAND){
@@ -418,7 +497,8 @@ int main(int argc, char **argv)
     debug_data.header.stamp = ros::Time::now();
     debug_data.header.seq = count;
     debug_data.header.frame_id = "debug_data";
-    debug_data.vector.x = controller_pose_z.error;
+    //debug_data.vector.x = controller_pose_z.error;
+    debug_data.vector.x =debughuz;//1118
     debug_data.vector.y = controller_pose_z.derror;
     if(JOY_READY)
       debug_data.vector.z = joystick_output.axes[JOY_CHANNEL_THROTTLE];

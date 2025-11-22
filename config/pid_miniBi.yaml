@@ -1,12 +1,24 @@
 controller: {
-    KP_x: 0.3,
+    # No RDBF
+    # KP_x: 0.3,
+    # KI_x: 0.01,
+    # KD_x: 0.2,
+    # X_limit: 0.25,
+    # RDFB
+    KP_x: 0.2,
     KI_x: 0.01,
-    KD_x: 0.2,
+    KD_x: 0.15,
     X_limit: 0.25,
     
-    KP_y: 0.3,
+    # No RDBF
+    # KP_y: 0.3,
+    # KI_y: 0.01,
+    # KD_y: 0.2,
+    # Y_limit: 0.25,
+    # RDFB
+    KP_y: 0.25,
     KI_y: 0.01,
-    KD_y: 0.2,
+    KD_y: 0.16,
     Y_limit: 0.25,
     
     KP_z: 0.1,
@@ -19,7 +31,7 @@ controller: {
     KD_yaw: 0.02,
     
     TAKEOFF_HEIGHT: 0.05,
-    TAKEOFF_THROTTLE: 0.37,
+    TAKEOFF_THROTTLE: 0.35,
     TAKEOFF_THROTTLE_TIME: 1,
     LAND_TIME: 5.0,
     

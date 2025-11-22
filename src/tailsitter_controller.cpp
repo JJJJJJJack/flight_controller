@@ -408,7 +408,7 @@ int main(int argc, char **argv)
       roll_sp     = flip_count % 2 == 0 ? saturate(controller_pose_y.output, -0.6, 0.6) + goal_euler.x/EULER2JOY : -saturate(controller_pose_y.output, -0.6, 0.6) - goal_euler.x/EULER2JOY;
       pitch_sp    = flip_count % 2 == 0 ? saturate(controller_pose_x.output, -0.6, 0.6) - goal_euler.y/EULER2JOY : -saturate(controller_pose_x.output, -0.6, 0.6) + goal_euler.y/EULER2JOY ;        
       yaw_sp      = joystick_input.axes[JOY_CHANNEL_YAW];//saturate(controller_pose_yaw.output, -0.6, 0.6) + goal_euler.z/YAWRATE2JOY;//
-      throttle_sp = saturate(controller_pose_z.output, -0.05, 0.1) + TAKEOFF_THROTTLE;
+      throttle_sp = saturate(controller_pose_z.output, -0.05, 0.5) + TAKEOFF_THROTTLE;
 
       joystick_output = joystick_input;
       joystick_output.axes[JOY_CHANNEL_PITCH]    = saturate(pitch_sp,   -1, 1);

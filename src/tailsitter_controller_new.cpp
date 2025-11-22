@@ -419,28 +419,15 @@ int main(int argc, char **argv)
 
       if(JOY_READY) 
       {
-       if(3900<count&&count<=4000) 
+       if(4000<count&&count<=4150) 
        {     ROS_INFO("Go ahead!",count);
-        joystick_output.axes[JOY_CHANNEL_PITCH]  = 0 ;
+        joystick_output.axes[JOY_CHANNEL_PITCH]  = 0.0833;
        }
-       else if(4000<count&&count<=4200) 
+       else if(4150<count&&count<=4350) 
        {     ROS_INFO("Go ahead!",count);
-        joystick_output.axes[JOY_CHANNEL_PITCH]  = 0.09 ;
-       }
-       else if(5450<count&&count<=5500) 
-       {
-         ROS_INFO("Go back!",count);
-        joystick_output.axes[JOY_CHANNEL_PITCH]  = 0;
-       }
-      //  else if(5500<count&&count<5650) 
-      //  {
-      //    ROS_INFO("Go back!",count);
-      //   joystick_output.axes[JOY_CHANNEL_PITCH]  = -0.09;
-      //  }
-       
-       
-      else joystick_output.axes[JOY_CHANNEL_PITCH] = saturate(pitch_sp,   -1, 1);
-      //else joystick_output.axes[JOY_CHANNEL_PITCH] = joystick_input.axes[JOY_CHANNEL_PITCH];
+        joystick_output.axes[JOY_CHANNEL_PITCH]  = -0.0833;
+       }else 
+        joystick_output.axes[JOY_CHANNEL_PITCH] = saturate(pitch_sp,   -1, 1);
       }
 
       // Swtich to land mode when triggered by the nob

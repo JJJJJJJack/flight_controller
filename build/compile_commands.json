@@ -1,0 +1,112 @@
+[
+{
+  "directory": "/home/xianghe/catkin_ws/src/flight_controller/build",
+  "command": "/usr/bin/c++  -DROSCONSOLE_BACKEND_LOG4CXX -DROS_BUILD_SHARED_LIBS=1 -DROS_PACKAGE_NAME=\\\"flight_controller\\\" -I/home/xianghe/catkin_ws/devel/include -I/home/xianghe/catkin_ws/src/mav_comm/mav_msgs/include -I/home/xianghe/catkin_ws/src/mav_comm/mav_planning_msgs/include -I/opt/ros/noetic/include -I/opt/ros/noetic/share/xmlrpcpp/cmake/../../../include/xmlrpcpp -I/usr/local/include/eigen3 -I/home/xianghe/catkin_ws/src/flight_controller/utility   -std=c++11 -g   -std=gnu++14 -o CMakeFiles/bicopter_through.dir/src/bicopter_through.cpp.o -c /home/xianghe/catkin_ws/src/flight_controller/src/bicopter_through.cpp",
+  "file": "/home/xianghe/catkin_ws/src/flight_controller/src/bicopter_through.cpp"
+},
+{
+  "directory": "/home/xianghe/catkin_ws/src/flight_controller/build",
+  "command": "/usr/bin/c++  -DROSCONSOLE_BACKEND_LOG4CXX -DROS_BUILD_SHARED_LIBS=1 -DROS_PACKAGE_NAME=\\\"flight_controller\\\" -I/home/xianghe/catkin_ws/devel/include -I/home/xianghe/catkin_ws/src/mav_comm/mav_msgs/include -I/home/xianghe/catkin_ws/src/mav_comm/mav_planning_msgs/include -I/opt/ros/noetic/include -I/opt/ros/noetic/share/xmlrpcpp/cmake/../../../include/xmlrpcpp -I/usr/local/include/eigen3 -I/home/xianghe/catkin_ws/src/flight_controller/utility   -std=c++11 -g   -std=gnu++14 -o CMakeFiles/quadtilt_controller.dir/src/quadtilt_controller.cpp.o -c /home/xianghe/catkin_ws/src/flight_controller/src/quadtilt_controller.cpp",
+  "file": "/home/xianghe/catkin_ws/src/flight_controller/src/quadtilt_controller.cpp"
+},
+{
+  "directory": "/home/xianghe/catkin_ws/src/flight_controller/build",
+  "command": "/usr/bin/c++  -DROSCONSOLE_BACKEND_LOG4CXX -DROS_BUILD_SHARED_LIBS=1 -DROS_PACKAGE_NAME=\\\"flight_controller\\\" -I/home/xianghe/catkin_ws/devel/include -I/home/xianghe/catkin_ws/src/mav_comm/mav_msgs/include -I/home/xianghe/catkin_ws/src/mav_comm/mav_planning_msgs/include -I/opt/ros/noetic/include -I/opt/ros/noetic/share/xmlrpcpp/cmake/../../../include/xmlrpcpp -I/usr/local/include/eigen3 -I/home/xianghe/catkin_ws/src/flight_controller/utility   -std=c++11 -g   -std=gnu++14 -o CMakeFiles/tailsitter_controller_new.dir/src/tailsitter_controller_new.cpp.o -c /home/xianghe/catkin_ws/src/flight_controller/src/tailsitter_controller_new.cpp",
+  "file": "/home/xianghe/catkin_ws/src/flight_controller/src/tailsitter_controller_new.cpp"
+},
+{
+  "directory": "/home/xianghe/catkin_ws/src/flight_controller/build",
+  "command": "/usr/bin/c++  -DROSCONSOLE_BACKEND_LOG4CXX -DROS_BUILD_SHARED_LIBS=1 -DROS_PACKAGE_NAME=\\\"flight_controller\\\" -I/home/xianghe/catkin_ws/devel/include -I/home/xianghe/catkin_ws/src/mav_comm/mav_msgs/include -I/home/xianghe/catkin_ws/src/mav_comm/mav_planning_msgs/include -I/opt/ros/noetic/include -I/opt/ros/noetic/share/xmlrpcpp/cmake/../../../include/xmlrpcpp -I/usr/local/include/eigen3 -I/home/xianghe/catkin_ws/src/flight_controller/utility   -std=c++11 -g   -std=gnu++14 -o CMakeFiles/tailsitter_controller.dir/src/tailsitter_controller.cpp.o -c /home/xianghe/catkin_ws/src/flight_controller/src/tailsitter_controller.cpp",
+  "file": "/home/xianghe/catkin_ws/src/flight_controller/src/tailsitter_controller.cpp"
+},
+{
+  "directory": "/home/xianghe/catkin_ws/src/flight_controller/build",
+  "command": "/usr/bin/c++  -DROSCONSOLE_BACKEND_LOG4CXX -DROS_BUILD_SHARED_LIBS=1 -DROS_PACKAGE_NAME=\\\"flight_controller\\\" -I/home/xianghe/catkin_ws/devel/include -I/home/xianghe/catkin_ws/src/mav_comm/mav_msgs/include -I/home/xianghe/catkin_ws/src/mav_comm/mav_planning_msgs/include -I/opt/ros/noetic/include -I/opt/ros/noetic/share/xmlrpcpp/cmake/../../../include/xmlrpcpp -I/usr/local/include/eigen3 -I/home/xianghe/catkin_ws/src/flight_controller/utility   -std=c++11 -g   -std=gnu++14 -o CMakeFiles/autoflip_controller_for_quad.dir/src/autoflip_controller_for_quad.cpp.o -c /home/xianghe/catkin_ws/src/flight_controller/src/autoflip_controller_for_quad.cpp",
+  "file": "/home/xianghe/catkin_ws/src/flight_controller/src/autoflip_controller_for_quad.cpp"
+},
+{
+  "directory": "/home/xianghe/catkin_ws/src/flight_controller/build",
+  "command": "/usr/bin/c++  -DROSCONSOLE_BACKEND_LOG4CXX -DROS_BUILD_SHARED_LIBS=1 -DROS_PACKAGE_NAME=\\\"flight_controller\\\" -I/home/xianghe/catkin_ws/devel/include -I/home/xianghe/catkin_ws/src/mav_comm/mav_msgs/include -I/home/xianghe/catkin_ws/src/mav_comm/mav_planning_msgs/include -I/opt/ros/noetic/include -I/opt/ros/noetic/share/xmlrpcpp/cmake/../../../include/xmlrpcpp -I/usr/local/include/eigen3 -I/home/xianghe/catkin_ws/src/flight_controller/utility   -std=c++11 -g   -std=gnu++14 -o CMakeFiles/pullerBi_controller.dir/src/pullerBi_controller.cpp.o -c /home/xianghe/catkin_ws/src/flight_controller/src/pullerBi_controller.cpp",
+  "file": "/home/xianghe/catkin_ws/src/flight_controller/src/pullerBi_controller.cpp"
+},
+{
+  "directory": "/home/xianghe/catkin_ws/src/flight_controller/build",
+  "command": "/usr/bin/c++  -DROSCONSOLE_BACKEND_LOG4CXX -DROS_BUILD_SHARED_LIBS=1 -DROS_PACKAGE_NAME=\\\"flight_controller\\\" -I/home/xianghe/catkin_ws/devel/include -I/home/xianghe/catkin_ws/src/mav_comm/mav_msgs/include -I/home/xianghe/catkin_ws/src/mav_comm/mav_planning_msgs/include -I/opt/ros/noetic/include -I/opt/ros/noetic/share/xmlrpcpp/cmake/../../../include/xmlrpcpp -I/usr/local/include/eigen3 -I/home/xianghe/catkin_ws/src/flight_controller/utility   -std=c++11 -g   -std=gnu++14 -o CMakeFiles/cs_controller.dir/src/cs_controller.cpp.o -c /home/xianghe/catkin_ws/src/flight_controller/src/cs_controller.cpp",
+  "file": "/home/xianghe/catkin_ws/src/flight_controller/src/cs_controller.cpp"
+},
+{
+  "directory": "/home/xianghe/catkin_ws/src/flight_controller/build",
+  "command": "/usr/bin/c++  -DROSCONSOLE_BACKEND_LOG4CXX -DROS_BUILD_SHARED_LIBS=1 -DROS_PACKAGE_NAME=\\\"flight_controller\\\" -I/home/xianghe/catkin_ws/devel/include -I/home/xianghe/catkin_ws/src/mav_comm/mav_msgs/include -I/home/xianghe/catkin_ws/src/mav_comm/mav_planning_msgs/include -I/opt/ros/noetic/include -I/opt/ros/noetic/share/xmlrpcpp/cmake/../../../include/xmlrpcpp -I/usr/local/include/eigen3 -I/home/xianghe/catkin_ws/src/flight_controller/utility   -std=c++11 -g   -std=gnu++14 -o CMakeFiles/yjr_controller.dir/src/GNC2022/yjr_controller.cpp.o -c /home/xianghe/catkin_ws/src/flight_controller/src/GNC2022/yjr_controller.cpp",
+  "file": "/home/xianghe/catkin_ws/src/flight_controller/src/GNC2022/yjr_controller.cpp"
+},
+{
+  "directory": "/home/xianghe/catkin_ws/src/flight_controller/build",
+  "command": "/usr/bin/c++  -DROSCONSOLE_BACKEND_LOG4CXX -DROS_BUILD_SHARED_LIBS=1 -DROS_PACKAGE_NAME=\\\"flight_controller\\\" -I/home/xianghe/catkin_ws/devel/include -I/home/xianghe/catkin_ws/src/mav_comm/mav_msgs/include -I/home/xianghe/catkin_ws/src/mav_comm/mav_planning_msgs/include -I/opt/ros/noetic/include -I/opt/ros/noetic/share/xmlrpcpp/cmake/../../../include/xmlrpcpp -I/usr/local/include/eigen3 -I/home/xianghe/catkin_ws/src/flight_controller/utility   -std=c++11 -g   -std=gnu++14 -o CMakeFiles/lyf_controller.dir/src/GNC2022/lyf_controller.cpp.o -c /home/xianghe/catkin_ws/src/flight_controller/src/GNC2022/lyf_controller.cpp",
+  "file": "/home/xianghe/catkin_ws/src/flight_controller/src/GNC2022/lyf_controller.cpp"
+},
+{
+  "directory": "/home/xianghe/catkin_ws/src/flight_controller/build",
+  "command": "/usr/bin/c++  -DROSCONSOLE_BACKEND_LOG4CXX -DROS_BUILD_SHARED_LIBS=1 -DROS_PACKAGE_NAME=\\\"flight_controller\\\" -I/home/xianghe/catkin_ws/devel/include -I/home/xianghe/catkin_ws/src/mav_comm/mav_msgs/include -I/home/xianghe/catkin_ws/src/mav_comm/mav_planning_msgs/include -I/opt/ros/noetic/include -I/opt/ros/noetic/share/xmlrpcpp/cmake/../../../include/xmlrpcpp -I/usr/local/include/eigen3 -I/home/xianghe/catkin_ws/src/flight_controller/utility   -std=c++11 -g   -std=gnu++14 -o CMakeFiles/bicopter_optitrack_controller.dir/src/bicopter_optitrack_controller.cpp.o -c /home/xianghe/catkin_ws/src/flight_controller/src/bicopter_optitrack_controller.cpp",
+  "file": "/home/xianghe/catkin_ws/src/flight_controller/src/bicopter_optitrack_controller.cpp"
+},
+{
+  "directory": "/home/xianghe/catkin_ws/src/flight_controller/build",
+  "command": "/usr/bin/c++  -DROSCONSOLE_BACKEND_LOG4CXX -DROS_BUILD_SHARED_LIBS=1 -DROS_PACKAGE_NAME=\\\"flight_controller\\\" -I/home/xianghe/catkin_ws/devel/include -I/home/xianghe/catkin_ws/src/mav_comm/mav_msgs/include -I/home/xianghe/catkin_ws/src/mav_comm/mav_planning_msgs/include -I/opt/ros/noetic/include -I/opt/ros/noetic/share/xmlrpcpp/cmake/../../../include/xmlrpcpp -I/usr/local/include/eigen3 -I/home/xianghe/catkin_ws/src/flight_controller/utility   -std=c++11 -g   -std=gnu++14 -o CMakeFiles/autoflip_controller_forbidFlip.dir/src/autoflip_controller_forbidFlip.cpp.o -c /home/xianghe/catkin_ws/src/flight_controller/src/autoflip_controller_forbidFlip.cpp",
+  "file": "/home/xianghe/catkin_ws/src/flight_controller/src/autoflip_controller_forbidFlip.cpp"
+},
+{
+  "directory": "/home/xianghe/catkin_ws/src/flight_controller/build",
+  "command": "/usr/bin/c++  -DROSCONSOLE_BACKEND_LOG4CXX -DROS_BUILD_SHARED_LIBS=1 -DROS_PACKAGE_NAME=\\\"flight_controller\\\" -I/home/xianghe/catkin_ws/devel/include -I/home/xianghe/catkin_ws/src/mav_comm/mav_msgs/include -I/home/xianghe/catkin_ws/src/mav_comm/mav_planning_msgs/include -I/opt/ros/noetic/include -I/opt/ros/noetic/share/xmlrpcpp/cmake/../../../include/xmlrpcpp -I/usr/local/include/eigen3 -I/home/xianghe/catkin_ws/src/flight_controller/utility   -std=c++11 -g   -std=gnu++14 -o CMakeFiles/bode_attitude_test.dir/src/bode_attitude_test.cpp.o -c /home/xianghe/catkin_ws/src/flight_controller/src/bode_attitude_test.cpp",
+  "file": "/home/xianghe/catkin_ws/src/flight_controller/src/bode_attitude_test.cpp"
+},
+{
+  "directory": "/home/xianghe/catkin_ws/src/flight_controller/build",
+  "command": "/usr/bin/c++  -DROSCONSOLE_BACKEND_LOG4CXX -DROS_BUILD_SHARED_LIBS=1 -DROS_PACKAGE_NAME=\\\"flight_controller\\\" -I/home/xianghe/catkin_ws/devel/include -I/home/xianghe/catkin_ws/src/mav_comm/mav_msgs/include -I/home/xianghe/catkin_ws/src/mav_comm/mav_planning_msgs/include -I/opt/ros/noetic/include -I/opt/ros/noetic/share/xmlrpcpp/cmake/../../../include/xmlrpcpp -I/usr/local/include/eigen3 -I/home/xianghe/catkin_ws/src/flight_controller/utility   -std=c++11 -g   -std=gnu++14 -o CMakeFiles/zyz_controller.dir/src/GNC2022/zyz_controller.cpp.o -c /home/xianghe/catkin_ws/src/flight_controller/src/GNC2022/zyz_controller.cpp",
+  "file": "/home/xianghe/catkin_ws/src/flight_controller/src/GNC2022/zyz_controller.cpp"
+},
+{
+  "directory": "/home/xianghe/catkin_ws/src/flight_controller/build",
+  "command": "/usr/bin/c++  -DROSCONSOLE_BACKEND_LOG4CXX -DROS_BUILD_SHARED_LIBS=1 -DROS_PACKAGE_NAME=\\\"flight_controller\\\" -I/home/xianghe/catkin_ws/devel/include -I/home/xianghe/catkin_ws/src/mav_comm/mav_msgs/include -I/home/xianghe/catkin_ws/src/mav_comm/mav_planning_msgs/include -I/opt/ros/noetic/include -I/opt/ros/noetic/share/xmlrpcpp/cmake/../../../include/xmlrpcpp -I/usr/local/include/eigen3 -I/home/xianghe/catkin_ws/src/flight_controller/utility   -std=c++11 -g   -std=gnu++14 -o CMakeFiles/lwj_controller.dir/src/GNC2022/lwj_controller.cpp.o -c /home/xianghe/catkin_ws/src/flight_controller/src/GNC2022/lwj_controller.cpp",
+  "file": "/home/xianghe/catkin_ws/src/flight_controller/src/GNC2022/lwj_controller.cpp"
+},
+{
+  "directory": "/home/xianghe/catkin_ws/src/flight_controller/build",
+  "command": "/usr/bin/c++  -DROSCONSOLE_BACKEND_LOG4CXX -DROS_BUILD_SHARED_LIBS=1 -DROS_PACKAGE_NAME=\\\"flight_controller\\\" -I/home/xianghe/catkin_ws/devel/include -I/home/xianghe/catkin_ws/src/mav_comm/mav_msgs/include -I/home/xianghe/catkin_ws/src/mav_comm/mav_planning_msgs/include -I/opt/ros/noetic/include -I/opt/ros/noetic/share/xmlrpcpp/cmake/../../../include/xmlrpcpp -I/usr/local/include/eigen3 -I/home/xianghe/catkin_ws/src/flight_controller/utility   -std=c++11 -g   -std=gnu++14 -o CMakeFiles/autoflip_controller.dir/src/autoflip_controller.cpp.o -c /home/xianghe/catkin_ws/src/flight_controller/src/autoflip_controller.cpp",
+  "file": "/home/xianghe/catkin_ws/src/flight_controller/src/autoflip_controller.cpp"
+},
+{
+  "directory": "/home/xianghe/catkin_ws/src/flight_controller/build",
+  "command": "/usr/bin/c++  -DROSCONSOLE_BACKEND_LOG4CXX -DROS_BUILD_SHARED_LIBS=1 -DROS_PACKAGE_NAME=\\\"flight_controller\\\" -I/home/xianghe/catkin_ws/devel/include -I/home/xianghe/catkin_ws/src/mav_comm/mav_msgs/include -I/home/xianghe/catkin_ws/src/mav_comm/mav_planning_msgs/include -I/opt/ros/noetic/include -I/opt/ros/noetic/share/xmlrpcpp/cmake/../../../include/xmlrpcpp -I/usr/local/include/eigen3 -I/home/xianghe/catkin_ws/src/flight_controller/utility   -std=c++11 -g   -std=gnu++14 -o CMakeFiles/autoflip_controller_cascade.dir/src/autoflip_controller_cascade.cpp.o -c /home/xianghe/catkin_ws/src/flight_controller/src/autoflip_controller_cascade.cpp",
+  "file": "/home/xianghe/catkin_ws/src/flight_controller/src/autoflip_controller_cascade.cpp"
+},
+{
+  "directory": "/home/xianghe/catkin_ws/src/flight_controller/build",
+  "command": "/usr/bin/c++  -DROSCONSOLE_BACKEND_LOG4CXX -DROS_BUILD_SHARED_LIBS=1 -DROS_PACKAGE_NAME=\\\"flight_controller\\\" -I/home/xianghe/catkin_ws/devel/include -I/home/xianghe/catkin_ws/src/mav_comm/mav_msgs/include -I/home/xianghe/catkin_ws/src/mav_comm/mav_planning_msgs/include -I/opt/ros/noetic/include -I/opt/ros/noetic/share/xmlrpcpp/cmake/../../../include/xmlrpcpp -I/usr/local/include/eigen3 -I/home/xianghe/catkin_ws/src/flight_controller/utility   -std=c++11 -g   -std=gnu++14 -o CMakeFiles/pusherBi_controller.dir/src/pusherBi_controller.cpp.o -c /home/xianghe/catkin_ws/src/flight_controller/src/pusherBi_controller.cpp",
+  "file": "/home/xianghe/catkin_ws/src/flight_controller/src/pusherBi_controller.cpp"
+},
+{
+  "directory": "/home/xianghe/catkin_ws/src/flight_controller/build",
+  "command": "/usr/bin/c++  -DROSCONSOLE_BACKEND_LOG4CXX -DROS_BUILD_SHARED_LIBS=1 -DROS_PACKAGE_NAME=\\\"flight_controller\\\" -I/home/xianghe/catkin_ws/devel/include -I/home/xianghe/catkin_ws/src/mav_comm/mav_msgs/include -I/home/xianghe/catkin_ws/src/mav_comm/mav_planning_msgs/include -I/opt/ros/noetic/include -I/opt/ros/noetic/share/xmlrpcpp/cmake/../../../include/xmlrpcpp -I/usr/local/include/eigen3 -I/home/xianghe/catkin_ws/src/flight_controller/utility   -std=c++11 -g   -std=gnu++14 -o CMakeFiles/flycontroller_minsnap.dir/src/flycontroller_minsnap.cpp.o -c /home/xianghe/catkin_ws/src/flight_controller/src/flycontroller_minsnap.cpp",
+  "file": "/home/xianghe/catkin_ws/src/flight_controller/src/flycontroller_minsnap.cpp"
+},
+{
+  "directory": "/home/xianghe/catkin_ws/src/flight_controller/build/gtest/googlemock",
+  "command": "/usr/bin/c++  -DGTEST_CREATE_SHARED_LIBRARY=1 -Dgmock_main_EXPORTS -isystem /usr/src/googletest/googlemock/include -isystem /usr/src/googletest/googlemock -isystem /usr/src/googletest/googletest/include -isystem /usr/src/googletest/googletest  -g -fPIC   -Wall -Wshadow -Wno-error=dangling-else -DGTEST_HAS_PTHREAD=1 -fexceptions -Wextra -Wno-unused-parameter -Wno-missing-field-initializers -DGTEST_HAS_PTHREAD=1 -std=c++11 -o CMakeFiles/gmock_main.dir/src/gmock_main.cc.o -c /usr/src/googletest/googlemock/src/gmock_main.cc",
+  "file": "/usr/src/googletest/googlemock/src/gmock_main.cc"
+},
+{
+  "directory": "/home/xianghe/catkin_ws/src/flight_controller/build/gtest/googlemock",
+  "command": "/usr/bin/c++  -DGTEST_CREATE_SHARED_LIBRARY=1 -Dgmock_EXPORTS -I/usr/src/googletest/googlemock/include -I/usr/src/googletest/googlemock -isystem /usr/src/googletest/googletest/include -isystem /usr/src/googletest/googletest  -g -fPIC   -Wall -Wshadow -Wno-error=dangling-else -DGTEST_HAS_PTHREAD=1 -fexceptions -Wextra -Wno-unused-parameter -Wno-missing-field-initializers -DGTEST_HAS_PTHREAD=1 -std=c++11 -o CMakeFiles/gmock.dir/src/gmock-all.cc.o -c /usr/src/googletest/googlemock/src/gmock-all.cc",
+  "file": "/usr/src/googletest/googlemock/src/gmock-all.cc"
+},
+{
+  "directory": "/home/xianghe/catkin_ws/src/flight_controller/build/gtest/googletest",
+  "command": "/usr/bin/c++  -DGTEST_CREATE_SHARED_LIBRARY=1 -Dgtest_main_EXPORTS -isystem /usr/src/googletest/googletest/include -isystem /usr/src/googletest/googletest  -g -fPIC   -Wall -Wshadow -Wno-error=dangling-else -DGTEST_HAS_PTHREAD=1 -fexceptions -Wextra -Wno-unused-parameter -Wno-missing-field-initializers -DGTEST_HAS_PTHREAD=1 -std=c++11 -o CMakeFiles/gtest_main.dir/src/gtest_main.cc.o -c /usr/src/googletest/googletest/src/gtest_main.cc",
+  "file": "/usr/src/googletest/googletest/src/gtest_main.cc"
+},
+{
+  "directory": "/home/xianghe/catkin_ws/src/flight_controller/build/gtest/googletest",
+  "command": "/usr/bin/c++  -DGTEST_CREATE_SHARED_LIBRARY=1 -Dgtest_EXPORTS -I/usr/src/googletest/googletest/include -I/usr/src/googletest/googletest  -g -fPIC   -Wall -Wshadow -Wno-error=dangling-else -DGTEST_HAS_PTHREAD=1 -fexceptions -Wextra -Wno-unused-parameter -Wno-missing-field-initializers -std=c++11 -o CMakeFiles/gtest.dir/src/gtest-all.cc.o -c /usr/src/googletest/googletest/src/gtest-all.cc",
+  "file": "/usr/src/googletest/googletest/src/gtest-all.cc"
+}
+]

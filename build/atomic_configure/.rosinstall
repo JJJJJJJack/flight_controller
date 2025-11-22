@@ -1,0 +1,2 @@
+- setup-file:
+    local-name: /home/xianghe/catkin_ws/src/flight_controller/build/devel/setup.sh

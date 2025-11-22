@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
 <launch>
-  <arg name="joy_dev" default="/dev/input/js1" />
+  <arg name="joy_dev" default="/dev/input/js0" />
   <arg name="x_init" default="0" />
   <arg name="y_init" default="0" />
   <arg name="z_init" default="1" />
@@ -25,7 +25,7 @@
   
   <!-- SBUS communication -->
   <node name="serial_to_sbus" pkg="serial_to_sbus" type="serial_to_sbus" respawn="true" output="screen">
-    <param name="USB" value="/dev/ttyUSB0"/>
+    <param name="USB" value="/dev/ttyUSB1"/>
   </node>
 
   <!--- Trajectory planner -->

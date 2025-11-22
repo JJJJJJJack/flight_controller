@@ -33,8 +33,8 @@ controller: {
     KD_vz: 0.05,
     VZ_limit: 0,
     
-    TAKEOFF_HEIGHT: 0.025,
-    TAKEOFF_THROTTLE: 0.256,
+    TAKEOFF_HEIGHT: 0.01,
+    TAKEOFF_THROTTLE: 0.243,
     TAKEOFF_THROTTLE_TIME: 0.6,
     LAND_TIME: 5.0,
     

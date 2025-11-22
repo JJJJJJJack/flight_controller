@@ -26,7 +26,8 @@ class filterTuning():
 	def __init__(self):
 		rospy.loginfo('uav_kf initializing')
 
-		self.input_sub = rospy.Subscriber("/vrpn_client_node/jackQuad/pose", PoseStamped, self.input_callback)
+		self.device_name = rospy.get_param('~device_name', 'jackQuad')
+		self.input_sub = rospy.Subscriber("/vrpn_client_node/"+self.device_name+"/pose", PoseStamped, self.input_callback)
 		self.output_pub = rospy.Publisher("/uav_kf", PoseStamped, queue_size = 1)
 		self.zRes, self.zP, self.zs, self.xs, self.v = [], [], [], [], [] # for eval
 		self.lastT, self.lastZ = None, None

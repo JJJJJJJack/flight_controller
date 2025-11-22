@@ -1,6 +1,9 @@
 cmake_minimum_required(VERSION 2.8.3)
 project(flight_controller)
 
+set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
@@ -138,7 +141,9 @@ add_executable(flycontroller_minsnap
 add_executable(quadtilt_controller
 src/quadtilt_controller.cpp
 )
-
+add_executable(bicopter_through
+src/bicopter_through.cpp
+)
 ## Add cmake target dependencies of the executable/library
 ## as an example, message headers may need to be generated before nodes
 # add_dependencies(flight_controller_node flight_controller_generate_messages_cpp)
@@ -208,5 +213,8 @@ target_link_libraries(flycontroller_minsnap
 )
 
 target_link_libraries(quadtilt_controller
+  ${catkin_LIBRARIES}
+)
+target_link_libraries(bicopter_through
   ${catkin_LIBRARIES}
 )
